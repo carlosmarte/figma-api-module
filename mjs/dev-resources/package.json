@@ -1,0 +1,88 @@
+{
+  "name": "figma-dev-resources",
+  "version": "1.0.0",
+  "description": "Node.js client and CLI for Figma Dev Resources API",
+  "type": "module",
+  "main": "sdk.mjs",
+  "types": "types.d.ts",
+  "bin": {
+    "figma-dev-resources": "./cli.mjs"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "npm test -- --watch",
+    "test:coverage": "npm test -- --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "start": "./cli.mjs",
+    "dev": "node --watch cli.mjs"
+  },
+  "keywords": [
+    "figma",
+    "dev-resources",
+    "api",
+    "client",
+    "sdk",
+    "cli",
+    "design-tokens",
+    "dev-mode"
+  ],
+  "author": "thinkeloquent",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "extensionsToTreatAsEsm": [".mjs"],
+    "transform": {},
+    "collectCoverageFrom": [
+      "*.mjs",
+      "!cli.mjs"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thinkeloquent/figma-api-module.git",
+    "directory": "mjs/dev-resources"
+  },
+  "bugs": {
+    "url": "https://github.com/thinkeloquent/figma-api-module/issues"
+  },
+  "homepage": "https://github.com/thinkeloquent/figma-api-module/tree/main/mjs/dev-resources#readme",
+  "exports": {
+    ".": {
+      "import": "./sdk.mjs",
+      "types": "./types.d.ts"
+    },
+    "./client": {
+      "import": "./client.mjs",
+      "types": "./types.d.ts"
+    },
+    "./sdk": {
+      "import": "./sdk.mjs",
+      "types": "./types.d.ts"
+    },
+    "./types": {
+      "types": "./types.d.ts"
+    }
+  },
+  "files": [
+    "*.mjs",
+    "*.d.ts",
+    "INSTRUCTIONS.md",
+    "EXAMPLES.md"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "figma-library-analytics",
+  "version": "1.0.0",
+  "description": "Node.js client for Figma Library Analytics API",
+  "type": "module",
+  "main": "sdk.mjs",
+  "bin": {
+    "figma-library-analytics": "./cli.mjs"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "npm test -- --watch",
+    "test:coverage": "npm test -- --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "start": "./cli.mjs --help"
+  },
+  "keywords": [
+    "figma",
+    "library",
+    "analytics",
+    "api",
+    "client",
+    "sdk",
+    "design",
+    "system",
+    "components",
+    "styles",
+    "variables",
+    "usage",
+    "metrics"
+  ],
+  "author": "thinkeloquent",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "extensionsToTreatAsEsm": [".mjs"],
+    "transform": {},
+    "testMatch": ["**/*.test.mjs"],
+    "collectCoverageFrom": [
+      "*.mjs",
+      "!cli.mjs"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thinkeloquent/figma-api-module.git",
+    "directory": "mjs/library-analytics"
+  },
+  "bugs": {
+    "url": "https://github.com/thinkeloquent/figma-api-module/issues"
+  },
+  "homepage": "https://github.com/thinkeloquent/figma-api-module#readme"
+}
