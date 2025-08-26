@@ -15,7 +15,14 @@
     "example:get-file": "node src/interfaces/cli.mjs get --file-key YOUR_FILE_KEY",
     "example:render-images": "node src/interfaces/cli.mjs render-images --file-key YOUR_FILE_KEY --ids NODE_ID"
   },
-  "keywords": ["figma", "api", "client", "sdk", "files", "design"],
+  "keywords": [
+    "figma",
+    "api",
+    "client",
+    "sdk",
+    "files",
+    "design"
+  ],
   "author": "thinkeloquent",
   "license": "MIT",
   "engines": {
@@ -35,8 +42,10 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".mjs"],
-    "transform": {}
+    "transform": {},
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
+    ]
   },
   "repository": {
     "type": "git",

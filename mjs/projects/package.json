@@ -44,11 +44,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".mjs"],
     "transform": {},
-    "collectCoverageFrom": [
-      "src/**/*.mjs",
-      "!src/interfaces/cli.mjs"
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
     ]
   },
   "repository": {

@@ -82,6 +82,8 @@ class RequestCache {
     this.cache = new Map();
     this.maxSize = maxSize;
     this.ttl = ttl;
+    this.hits = 0;
+    this.misses = 0;
   }
 
   _generateKey(url, options = {}) {
@@ -93,13 +95,18 @@ class RequestCache {
     const key = this._generateKey(url, options);
     const entry = this.cache.get(key);
     
-    if (!entry) return null;
-    
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
+    if (!entry) {
+      this.misses++;
       return null;
     }
     
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      this.misses++;
+      return null;
+    }
+    
+    this.hits++;
     return entry.data;
   }
 
@@ -120,19 +127,23 @@ class RequestCache {
 
   clear() {
     this.cache.clear();
+    this.hits = 0;
+    this.misses = 0;
   }
 
   getStats() {
     return {
       size: this.cache.size,
       maxSize: this.maxSize,
+      hits: this.hits,
+      misses: this.misses,
       hitRate: this._calculateHitRate()
     };
   }
 
   _calculateHitRate() {
-    // This would require tracking hits/misses in a production implementation
-    return 0; // Placeholder
+    const total = this.hits + this.misses;
+    return total === 0 ? 0 : this.hits / total;
   }
 }
 
@@ -190,7 +201,7 @@ export class FigmaCommentsClient {
 
   _initializeDefaults() {
     this.defaultHeaders = {
-      'Authorization': `Bearer ${this.apiToken}`,
+      'X-Figma-Token': this.apiToken,
       'Content-Type': 'application/json',
       'User-Agent': 'figma-comments-client/1.0.0',
       'Accept': 'application/json'

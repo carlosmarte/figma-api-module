@@ -43,8 +43,8 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".mjs"],
-    "transform": {}
+    "transform": {},
+    "testMatch": ["**/tests/**/*.test.mjs"]
   },
   "repository": {
     "type": "git",

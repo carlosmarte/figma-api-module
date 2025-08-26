@@ -346,7 +346,7 @@ export class FigmaCommentsService {
           const comment = comments.find(c => c.id === commentId);
           return { commentId, count, comment: comment ? {
             message: comment.message.substring(0, 100),
-            user: comment.user.handle,
+            user: comment.user?.handle || 'Unknown',
             created_at: comment.created_at
           } : null };
         });

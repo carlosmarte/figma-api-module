@@ -30,14 +30,14 @@
     "example:search": "node src/interfaces/cli.mjs components search YOUR_TEAM_ID button"
   },
   "keywords": [
-    "figma", 
-    "api", 
-    "client", 
-    "sdk", 
-    "components", 
-    "component-sets", 
-    "styles", 
-    "design-system", 
+    "figma",
+    "api",
+    "client",
+    "sdk",
+    "components",
+    "component-sets",
+    "styles",
+    "design-system",
     "library"
   ],
   "author": "thinkeloquent",
@@ -59,12 +59,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".mjs"],
     "transform": {},
-    "testMatch": ["**/tests/**/*.test.mjs"],
-    "collectCoverageFrom": [
-      "src/**/*.mjs",
-      "!src/interfaces/cli.mjs"
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
     ]
   },
   "repository": {

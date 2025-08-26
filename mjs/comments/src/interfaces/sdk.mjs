@@ -405,12 +405,12 @@ export class FigmaCommentsSDK {
       avgMessageLength: stats.averageLength,
       
       // Enhanced reaction metrics
-      totalReactions: reactionSummary.totalReactions,
-      reactionRate: stats.total > 0 ? (reactionSummary.totalReactions / stats.total) * 100 : 0,
-      topReactions: reactionSummary.topEmojis,
-      mostReactedComments: reactionSummary.mostReactedComments,
-      reactionEngagementUsers: Object.keys(reactionSummary.userReactionActivity).length,
-      avgReactionsPerComment: stats.total > 0 ? reactionSummary.totalReactions / stats.total : 0
+      totalReactions: reactionSummary.totalReactions || 0,
+      reactionRate: stats.total > 0 ? ((reactionSummary.totalReactions || 0) / stats.total) * 100 : 0,
+      topReactions: reactionSummary.topEmojis || [],
+      mostReactedComments: reactionSummary.mostReactedComments || [],
+      reactionEngagementUsers: reactionSummary.userReactionActivity ? Object.keys(reactionSummary.userReactionActivity).length : 0,
+      avgReactionsPerComment: stats.total > 0 ? (reactionSummary.totalReactions || 0) / stats.total : 0
     };
     
     return engagementMetrics;
@@ -456,6 +456,7 @@ export class FigmaCommentsSDK {
     const userCounts = {};
     
     for (const comment of comments) {
+      if (!comment.user) continue;
       const userId = comment.user.id;
       if (!userCounts[userId]) {
         userCounts[userId] = {

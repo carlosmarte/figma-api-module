@@ -3,24 +3,22 @@
  */
 
 import { jest } from '@jest/globals';
-import { FigmaComponentsService } from '../../src/core/service.mjs';
-import { 
-  ValidationError,
-  PaginationError 
-} from '../../src/core/exceptions.mjs';
 
-// Mock the client
+// Mock the client before importing anything that uses it
 const mockClient = {
   get: jest.fn(),
   getStats: jest.fn(() => ({ totalRequests: 0 })),
   healthCheck: jest.fn(() => Promise.resolve(true))
 };
 
-// Mock the client constructor
 jest.unstable_mockModule('../../src/core/client.mjs', () => ({
-  FigmaComponentsClient: jest.fn(() => mockClient),
-  default: jest.fn(() => mockClient)
+  default: jest.fn().mockImplementation(() => mockClient),
+  FigmaComponentsClient: jest.fn().mockImplementation(() => mockClient)
 }));
+
+// Import after mocking
+const { FigmaComponentsService } = await import('../../src/core/service.mjs');
+const { ValidationError, PaginationError } = await import('../../src/core/exceptions.mjs');
 
 describe('FigmaComponentsService', () => {
   let service;

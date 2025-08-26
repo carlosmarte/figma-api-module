@@ -23,7 +23,14 @@
     "format": "prettier --write .",
     "check": "npm run lint && npm test"
   },
-  "keywords": ["figma", "api", "variables", "client", "sdk", "enterprise"],
+  "keywords": [
+    "figma",
+    "api",
+    "variables",
+    "client",
+    "sdk",
+    "enterprise"
+  ],
   "author": "thinkeloquent",
   "license": "MIT",
   "engines": {
@@ -43,12 +50,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".mjs"],
     "transform": {},
-    "testMatch": ["**/tests/**/*.test.mjs"],
-    "collectCoverageFrom": [
-      "src/**/*.mjs",
-      "!src/interfaces/cli.mjs"
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
     ]
   }
 }

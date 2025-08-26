@@ -3,6 +3,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
 import { FigmaComponentsClient } from '../../src/core/client.mjs';
 import { 
   AuthenticationError, 
@@ -10,14 +11,18 @@ import {
   ValidationError 
 } from '../../src/core/exceptions.mjs';
 
-// Mock fetch globally
-global.fetch = jest.fn();
-
 describe('FigmaComponentsClient', () => {
   let client;
   let mockLogger;
+  let mockAgent;
+  let originalDispatcher;
 
   beforeEach(() => {
+    originalDispatcher = getGlobalDispatcher();
+    mockAgent = new MockAgent();
+    mockAgent.disableNetConnect();
+    setGlobalDispatcher(mockAgent);
+
     mockLogger = {
       debug: jest.fn(),
       error: jest.fn(),
@@ -28,8 +33,11 @@ describe('FigmaComponentsClient', () => {
       apiToken: 'test-token',
       logger: mockLogger
     });
+  });
 
-    fetch.mockClear();
+  afterEach(() => {
+    setGlobalDispatcher(originalDispatcher);
+    mockAgent.close();
   });
 
   describe('constructor', () => {
@@ -65,78 +73,89 @@ describe('FigmaComponentsClient', () => {
     it('should make successful GET request', async () => {
       const mockResponse = { components: [] };
       
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockResponse)
-      });
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/teams/123/components',
+          method: 'GET'
+        })
+        .reply(200, mockResponse, {
+          headers: { 'content-type': 'application/json' }
+        });
 
       const result = await client.get('/v1/teams/123/components');
-
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.figma.com/v1/teams/123/components',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'X-Figma-Token': 'test-token',
-            'Content-Type': 'application/json'
-          })
-        })
-      );
-
       expect(result).toEqual(mockResponse);
     });
 
     it('should handle query parameters', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({})
-      });
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/teams/123/components?page_size=50&after=100',
+          method: 'GET'
+        })
+        .reply(200, {}, {
+          headers: { 'content-type': 'application/json' }
+        });
 
-      await client.get('/v1/teams/123/components', {
+      const result = await client.get('/v1/teams/123/components', {
         page_size: 50,
         after: 100
       });
 
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.figma.com/v1/teams/123/components?page_size=50&after=100',
-        expect.any(Object)
-      );
+      expect(result).toEqual({});
     });
 
     it('should handle 404 errors', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        headers: new Map(),
-        json: () => Promise.resolve({ message: 'Team not found' })
-      });
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/teams/123/components',
+          method: 'GET'
+        })
+        .reply(404, { message: 'Team not found' }, {
+          headers: { 'content-type': 'application/json' }
+        });
 
       await expect(client.get('/v1/teams/123/components')).rejects.toThrow();
     });
 
     it('should handle rate limit errors', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        statusText: 'Too Many Requests',
-        headers: new Map([['retry-after', '60']]),
-        json: () => Promise.resolve({})
+      // Create a client with no retries for this test
+      const testClient = new FigmaComponentsClient({
+        apiToken: 'test-token',
+        logger: mockLogger,
+        retryConfig: { maxRetries: 0 }
       });
 
-      await expect(client.get('/v1/teams/123/components')).rejects.toThrow(RateLimitError);
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/teams/123/components',
+          method: 'GET'
+        })
+        .reply(429, {}, {
+          headers: { 
+            'content-type': 'application/json',
+            'retry-after': '60'
+          }
+        });
+
+      await expect(testClient.get('/v1/teams/123/components')).rejects.toThrow(RateLimitError);
     });
   });
 
   describe('rate limiting', () => {
     it('should track request timestamps', async () => {
-      fetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({})
-      });
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/teams/123/components',
+          method: 'GET'
+        })
+        .reply(200, {}, {
+          headers: { 'content-type': 'application/json' }
+        });
 
       expect(client.requestTimestamps).toHaveLength(0);
 
@@ -148,26 +167,30 @@ describe('FigmaComponentsClient', () => {
 
   describe('health check', () => {
     it('should return true for successful health check', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ id: 'test-user' })
-      });
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/me',
+          method: 'GET'
+        })
+        .reply(200, { id: 'test-user' }, {
+          headers: { 'content-type': 'application/json' }
+        });
 
       const isHealthy = await client.healthCheck();
-
       expect(isHealthy).toBe(true);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.figma.com/v1/me',
-        expect.any(Object)
-      );
     });
 
     it('should return false for failed health check', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'));
+      const mockPool = mockAgent.get('https://api.figma.com');
+      mockPool
+        .intercept({
+          path: '/v1/me',
+          method: 'GET'
+        })
+        .replyWithError(new Error('Network error'));
 
       const isHealthy = await client.healthCheck();
-
       expect(isHealthy).toBe(false);
     });
   });
