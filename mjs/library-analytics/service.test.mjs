@@ -287,18 +287,16 @@ describe('FigmaLibraryAnalyticsService', () => {
       };
 
       service.getComponentAdoption = jest.fn()
-        .mockResolvedValueOnce(lastWeekMetrics)
-        .mockResolvedValueOnce(lastWeekMetrics) // style adoption
-        .mockResolvedValueOnce(lastWeekMetrics) // variable adoption
-        .mockResolvedValueOnce(lastMonthMetrics)
-        .mockResolvedValueOnce(lastMonthMetrics)
-        .mockResolvedValueOnce(lastMonthMetrics);
+        .mockResolvedValueOnce(lastWeekMetrics)   // for lastWeek period
+        .mockResolvedValueOnce(lastMonthMetrics); // for lastMonth period
 
       service.getStyleAdoption = jest.fn()
-        .mockResolvedValue(lastWeekMetrics);
+        .mockResolvedValueOnce(lastWeekMetrics)   // for lastWeek period
+        .mockResolvedValueOnce(lastMonthMetrics); // for lastMonth period
 
       service.getVariableAdoption = jest.fn()
-        .mockResolvedValue(lastWeekMetrics);
+        .mockResolvedValueOnce(lastWeekMetrics)   // for lastWeek period
+        .mockResolvedValueOnce(lastMonthMetrics); // for lastMonth period
 
       const result = await service.getLibraryTrends(mockFileKey, {
         periods: ['lastWeek', 'lastMonth']

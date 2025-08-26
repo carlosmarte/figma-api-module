@@ -11,6 +11,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "npm test -- --watch",
     "test:coverage": "npm test -- --coverage",
+    "test:integration": "node integration-test.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "start": "./cli.mjs --help"
@@ -49,7 +50,6 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".mjs"],
     "transform": {},
     "testMatch": ["**/*.test.mjs"],
     "collectCoverageFrom": [

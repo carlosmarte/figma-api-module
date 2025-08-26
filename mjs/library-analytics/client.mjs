@@ -246,8 +246,10 @@ export class FigmaLibraryAnalyticsClient {
       return await response.json();
 
     } catch (error) {
-      // Don't retry auth errors or validation errors
-      if (error instanceof LibraryAnalyticsAuthError || error instanceof LibraryAnalyticsValidationError) {
+      // Don't retry auth errors, validation errors, or rate limit errors
+      if (error instanceof LibraryAnalyticsAuthError || 
+          error instanceof LibraryAnalyticsValidationError ||
+          error instanceof LibraryAnalyticsRateLimitError) {
         throw error;
       }
 
@@ -270,7 +272,6 @@ export class FigmaLibraryAnalyticsClient {
    * @private
    */
   _shouldRetry(error) {
-    if (error instanceof LibraryAnalyticsRateLimitError) return true;
     if (error.meta?.status >= 500) return true;
     if (error.name === 'TypeError' && error.message.includes('fetch')) return true;
     return false;

@@ -584,6 +584,7 @@ export class FigmaLibraryAnalyticsService {
     const periods = Object.keys(trends);
     if (periods.length < 2) return {};
 
+    // First period is most recent (current), second is older (previous)
     const [current, previous] = periods;
     const comparison = {};
 

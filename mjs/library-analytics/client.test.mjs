@@ -3,16 +3,23 @@
  */
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import {
+
+// Mock undici before importing client
+const mockFetch = jest.fn();
+const mockProxyAgent = jest.fn();
+
+jest.unstable_mockModule('undici', () => ({
+  fetch: mockFetch,
+  ProxyAgent: mockProxyAgent
+}));
+
+const {
   FigmaLibraryAnalyticsClient,
   LibraryAnalyticsError,
   LibraryAnalyticsAuthError,
   LibraryAnalyticsValidationError,
   LibraryAnalyticsRateLimitError
-} from './client.mjs';
-
-// Mock fetch globally
-global.fetch = jest.fn();
+} = await import('./client.mjs');
 
 describe('FigmaLibraryAnalyticsClient', () => {
   let client;
@@ -21,6 +28,7 @@ describe('FigmaLibraryAnalyticsClient', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFetch.mockClear();
     client = new FigmaLibraryAnalyticsClient({
       apiToken: mockApiToken
     });
@@ -93,15 +101,18 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
       const result = await client.request('/test-path');
       expect(result).toEqual(mockResponse);
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.figma.com/test-path',
         expect.objectContaining({
           method: 'GET',
@@ -114,9 +125,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
     });
 
     test('should handle 401 authentication error', async () => {
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce({})
       });
 
@@ -124,9 +138,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
     });
 
     test('should handle 403 forbidden error', async () => {
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 403,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce({})
       });
 
@@ -134,10 +151,13 @@ describe('FigmaLibraryAnalyticsClient', () => {
     });
 
     test('should handle 429 rate limit error', async () => {
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
-        headers: new Map([['Retry-After', '60']])
+        headers: {
+          get: (key) => key === 'Retry-After' ? '60' : null
+        },
+        json: jest.fn().mockResolvedValueOnce({})
       });
 
       await expect(client.request('/test-path')).rejects.toThrow(LibraryAnalyticsRateLimitError);
@@ -152,9 +172,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
@@ -163,7 +186,7 @@ describe('FigmaLibraryAnalyticsClient', () => {
       });
 
       expect(result).toEqual(mockResponse);
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/v1/analytics/libraries/test-file-key/component/actions'),
         expect.any(Object)
       );
@@ -182,9 +205,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
@@ -204,9 +230,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
@@ -224,9 +253,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
@@ -246,9 +278,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
@@ -266,9 +301,12 @@ describe('FigmaLibraryAnalyticsClient', () => {
         ]
       };
 
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce(mockResponse)
       });
 
@@ -313,15 +351,21 @@ describe('FigmaLibraryAnalyticsClient', () => {
         pagination: { next_cursor: null }
       };
 
-      global.fetch
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: {
+            get: (key) => null
+          },
           json: jest.fn().mockResolvedValueOnce(page1Response)
         })
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: {
+            get: (key) => null
+          },
           json: jest.fn().mockResolvedValueOnce(page2Response)
         });
 
@@ -350,15 +394,21 @@ describe('FigmaLibraryAnalyticsClient', () => {
         pagination: { next_cursor: null }
       };
 
-      global.fetch
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: {
+            get: (key) => null
+          },
           json: jest.fn().mockResolvedValueOnce(page1Response)
         })
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: {
+            get: (key) => null
+          },
           json: jest.fn().mockResolvedValueOnce(page2Response)
         });
 
@@ -391,28 +441,34 @@ describe('FigmaLibraryAnalyticsClient', () => {
 
   describe('Error Handling', () => {
     test('should retry on network errors', async () => {
-      global.fetch
-        .mockRejectedValueOnce(new TypeError('Network error'))
+      mockFetch
+        .mockRejectedValueOnce(new TypeError('fetch failed - Network error'))
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: {
+            get: (key) => null
+          },
           json: jest.fn().mockResolvedValueOnce({ success: true })
         });
 
       const result = await client.request('/test-path');
       expect(result).toEqual({ success: true });
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     test('should not retry on auth errors', async () => {
-      global.fetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
+        headers: {
+          get: (key) => null
+        },
         json: jest.fn().mockResolvedValueOnce({})
       });
 
       await expect(client.request('/test-path')).rejects.toThrow(LibraryAnalyticsAuthError);
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });
