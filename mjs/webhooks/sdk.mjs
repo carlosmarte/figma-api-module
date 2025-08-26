@@ -3,6 +3,7 @@
  * Provides ergonomic API over core webhook client
  */
 
+import { fetch, ProxyAgent } from 'undici';
 import FigmaWebhooksClient from './client.mjs';
 
 /**
@@ -28,6 +29,17 @@ export class FigmaWebhooksSDK {
 
     this.client = new FigmaWebhooksClient(options);
     this.logger = options.logger || console;
+    
+    // Initialize proxy agent if configured
+    const proxyUrl = options.proxyUrl || process.env.HTTP_PROXY;
+    const proxyToken = options.proxyToken || process.env.HTTP_PROXY_TOKEN;
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+    }
   }
 
   // === Webhook Management Methods ===
@@ -403,7 +415,7 @@ export class FigmaWebhooksSDK {
    */
   async testWebhookEndpoint(endpoint) {
     try {
-      const response = await fetch(endpoint, {
+      const fetchOptions = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -414,7 +426,14 @@ export class FigmaWebhooksSDK {
           timestamp: new Date().toISOString(),
           webhook_id: 'test'
         })
-      });
+      };
+      
+      // Add proxy dispatcher if configured
+      if (this.proxyAgent) {
+        fetchOptions.dispatcher = this.proxyAgent;
+      }
+      
+      const response = await fetch(endpoint, fetchOptions);
 
       return {
         reachable: true,

@@ -14,6 +14,7 @@
  *  - Exponential backoff with jitter for retries
  */
 
+import { fetch, ProxyAgent } from 'undici';
 import {
   FigmaApiError,
   RateLimitError,
@@ -44,7 +45,9 @@ export class FigmaComponentsClient {
     logger = console,
     timeout = 30000,
     retryConfig = {},
-    rateLimitConfig = {}
+    rateLimitConfig = {},
+    proxyUrl = process.env.HTTP_PROXY,
+    proxyToken = process.env.HTTP_PROXY_TOKEN
   } = {}) {
     if (!apiToken) {
       throw new AuthenticationError('API token is required');
@@ -58,6 +61,15 @@ export class FigmaComponentsClient {
     this._initializeRetryConfig(retryConfig);
     this._initializeRateLimitConfig(rateLimitConfig);
     this._initializeRequestTracking();
+    
+    // Initialize proxy agent if configured
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+    }
   }
 
   /**
@@ -190,6 +202,11 @@ export class FigmaComponentsClient {
         },
         signal: controller.signal
       };
+      
+      // Add proxy dispatcher if configured
+      if (this.proxyAgent) {
+        requestOptions.dispatcher = this.proxyAgent;
+      }
 
       this.logger.debug(`Making request: ${options.method || 'GET'} ${url}`);
       

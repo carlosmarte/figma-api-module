@@ -3,11 +3,22 @@
  * Provides ergonomic API over core client
  */
 
+import { fetch, ProxyAgent } from 'undici';
 import FigmaDevResourcesClient from './client.mjs';
 
 export class FigmaDevResourcesSDK {
   constructor(config) {
     this.client = new FigmaDevResourcesClient(config);
+    
+    // Initialize proxy agent if configured
+    const proxyUrl = config?.proxyUrl || process.env.HTTP_PROXY;
+    const proxyToken = config?.proxyToken || process.env.HTTP_PROXY_TOKEN;
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+    }
   }
 
   // High-level methods that compose client operations
@@ -330,7 +341,14 @@ export class FigmaDevResourcesSDK {
 
     for (const resource of resources) {
       try {
-        const response = await fetch(resource.url, { method: 'HEAD' });
+        const fetchOptions = { method: 'HEAD' };
+        
+        // Add proxy dispatcher if configured
+        if (this.proxyAgent) {
+          fetchOptions.dispatcher = this.proxyAgent;
+        }
+        
+        const response = await fetch(resource.url, fetchOptions);
         if (!response.ok) {
           invalid.push({
             ...resource,

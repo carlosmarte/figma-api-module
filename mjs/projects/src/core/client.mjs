@@ -14,6 +14,7 @@
  *  - Concurrent request management with queuing
  */
 
+import { fetch, ProxyAgent } from 'undici';
 import {
   FigmaProjectsError,
   NetworkError,
@@ -304,11 +305,24 @@ export class FigmaProjectsClient {
     this.maxRetries = options.maxRetries || 3;
     this.enableCache = options.enableCache !== false;
     this.enableMetrics = options.enableMetrics !== false;
+    
+    // Proxy configuration
+    const proxyUrl = options.proxyUrl || process.env.HTTP_PROXY;
+    const proxyToken = options.proxyToken || process.env.HTTP_PROXY_TOKEN;
 
     // Initialize components
     this.rateLimiter = new RateLimiter(options.rateLimitRpm || 60);
     this.cache = this.enableCache ? new RequestCache() : null;
     this.metrics = this.enableMetrics ? new RequestMetrics() : null;
+    
+    // Initialize proxy agent if configured
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+    }
 
     // Request defaults
     this.defaultHeaders = {
@@ -360,12 +374,19 @@ export class FigmaProjectsClient {
       await this.rateLimiter.checkLimit();
 
       // Execute request with retry logic
-      const response = await this._executeWithRetry(url, {
+      const fetchOptions = {
         method,
         headers: { ...this.defaultHeaders, ...options.headers },
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: this._createTimeoutSignal()
-      });
+      };
+      
+      // Add proxy dispatcher if configured
+      if (this.proxyAgent) {
+        fetchOptions.dispatcher = this.proxyAgent;
+      }
+      
+      const response = await this._executeWithRetry(url, fetchOptions);
 
       // Parse response
       const responseData = await this._parseResponse(response);

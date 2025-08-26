@@ -12,6 +12,7 @@
  *  - Memory-efficient response processing
  */
 
+import { fetch, ProxyAgent } from 'undici';
 import {
   FigmaCommentsError,
   RateLimitError,
@@ -146,7 +147,9 @@ export class FigmaCommentsClient {
     rateLimiter = null,
     cache = null,
     timeout = 30000,
-    retries = 3
+    retries = 3,
+    proxyUrl = process.env.HTTP_PROXY,
+    proxyToken = process.env.HTTP_PROXY_TOKEN
   } = {}) {
     if (!apiToken) {
       throw new AuthenticationError('API token is required');
@@ -161,6 +164,15 @@ export class FigmaCommentsClient {
     // Initialize rate limiter and cache
     this.rateLimiter = rateLimiter || new RateLimiter();
     this.cache = cache || new RequestCache();
+    
+    // Initialize proxy agent if configured
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+    }
     
     // Request statistics
     this.stats = {
@@ -220,12 +232,19 @@ export class FigmaCommentsClient {
       }
 
       // Execute request with retry logic
-      const response = await this._executeWithRetry(url, {
+      const fetchOptions = {
         method,
         headers: { ...this.defaultHeaders, ...options.headers },
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: this._createTimeoutSignal()
-      });
+      };
+      
+      // Add proxy dispatcher if configured
+      if (this.proxyAgent) {
+        fetchOptions.dispatcher = this.proxyAgent;
+      }
+      
+      const response = await this._executeWithRetry(url, fetchOptions);
 
       // Cache successful GET responses
       if (method === 'GET' && response && !options.bypassCache) {

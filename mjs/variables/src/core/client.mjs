@@ -13,6 +13,7 @@
  *  - Memory-efficient batch operations
  */
 
+import { fetch, ProxyAgent } from 'undici';
 import { 
   ApiError, 
   AuthenticationError, 
@@ -32,7 +33,9 @@ export class FigmaVariablesClient {
     logger = console,
     rateLimiter = null,
     cache = null,
-    timeout = 30000
+    timeout = 30000,
+    proxyUrl = process.env.HTTP_PROXY,
+    proxyToken = process.env.HTTP_PROXY_TOKEN
   } = {}) {
     if (!accessToken) {
       throw new AuthenticationError('Figma access token is required');
@@ -44,6 +47,16 @@ export class FigmaVariablesClient {
     this.rateLimiter = rateLimiter;
     this.cache = cache;
     this.timeout = timeout;
+    
+    // Initialize proxy agent if configured
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+    }
+    
     this._initializeDefaults();
   }
 
@@ -215,11 +228,18 @@ export class FigmaVariablesClient {
       await this.rateLimiter.checkLimit();
     }
 
-    const response = await this._executeWithRetry(url, {
+    const fetchOptions = {
       ...options,
       headers: { ...this.defaultHeaders, ...options.headers },
       signal: AbortSignal.timeout(this.timeout)
-    });
+    };
+    
+    // Add proxy dispatcher if configured
+    if (this.proxyAgent) {
+      fetchOptions.dispatcher = this.proxyAgent;
+    }
+    
+    const response = await this._executeWithRetry(url, fetchOptions);
 
     return response;
   }

@@ -14,6 +14,8 @@
  *  - Connection pooling for high-throughput scenarios
  */
 
+import { fetch, ProxyAgent } from 'undici';
+
 /**
  * Base error class for library analytics operations
  * @extends Error
@@ -79,7 +81,9 @@ export class FigmaLibraryAnalyticsClient {
     logger = console,
     rateLimiter = null,
     cache = null,
-    timeout = 30000
+    timeout = 30000,
+    proxyUrl = process.env.HTTP_PROXY,
+    proxyToken = process.env.HTTP_PROXY_TOKEN
   } = {}) {
     if (!apiToken) {
       throw new LibraryAnalyticsAuthError();
@@ -91,6 +95,15 @@ export class FigmaLibraryAnalyticsClient {
     this.rateLimiter = rateLimiter;
     this.cache = cache;
     this.timeout = timeout;
+    
+    // Initialize proxy agent if configured
+    this.proxyAgent = null;
+    if (proxyUrl) {
+      this.proxyAgent = proxyToken 
+        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
+        : new ProxyAgent(proxyUrl);
+      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+    }
     
     this._initializeDefaults();
   }
@@ -160,12 +173,19 @@ export class FigmaLibraryAnalyticsClient {
       }
     }
 
-    const response = await this._executeWithRetry(url, {
+    const fetchOptions = {
       method,
       headers: { ...this.defaultHeaders, ...options.headers },
       signal: AbortSignal.timeout(this.timeout),
       ...options
-    });
+    };
+    
+    // Add proxy dispatcher if configured
+    if (this.proxyAgent) {
+      fetchOptions.dispatcher = this.proxyAgent;
+    }
+    
+    const response = await this._executeWithRetry(url, fetchOptions);
 
     // Update cache for successful GET requests
     if (this.cache && method === 'GET' && response) {
