@@ -2,19 +2,26 @@
  * Unit tests for FigmaFilesService
  */
 
-import { jest } from '@jest/globals';
-import { FigmaFilesService } from '../../src/core/service.mjs';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { ValidationError, NodeNotFoundError } from '../../src/core/exceptions.mjs';
 
-// Mock the client
-jest.mock('../../src/core/client.mjs', () => ({
+// Mock the client module before importing the service
+const mockGet = jest.fn();
+const mockPost = jest.fn();
+const mockGetStats = jest.fn();
+const mockHealthCheck = jest.fn();
+
+jest.unstable_mockModule('../../src/core/client.mjs', () => ({
   default: jest.fn().mockImplementation(() => ({
-    get: jest.fn(),
-    post: jest.fn(),
-    getStats: jest.fn(() => ({ totalRequests: 0 })),
-    healthCheck: jest.fn(() => true)
+    get: mockGet,
+    post: mockPost,
+    getStats: mockGetStats,
+    healthCheck: mockHealthCheck
   }))
 }));
+
+// Import the service after mocking the client
+const { FigmaFilesService } = await import('../../src/core/service.mjs');
 
 describe('FigmaFilesService', () => {
   let service;
@@ -22,6 +29,16 @@ describe('FigmaFilesService', () => {
   const mockApiToken = 'test-token';
 
   beforeEach(() => {
+    // Reset all mocks before each test
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockGetStats.mockReset();
+    mockHealthCheck.mockReset();
+    
+    // Set default return values
+    mockGetStats.mockReturnValue({ totalRequests: 0 });
+    mockHealthCheck.mockResolvedValue(true);
+    
     service = new FigmaFilesService({
       apiToken: mockApiToken,
       logger: { debug: jest.fn(), error: jest.fn(), warn: jest.fn() }
@@ -108,17 +125,17 @@ describe('FigmaFilesService', () => {
   describe('getFile', () => {
     it('should get file with basic parameters', async () => {
       const mockResponse = { name: 'Test File', document: {} };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.getFile('test-key');
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key', {});
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key', {});
       expect(result).toEqual(mockResponse);
     });
 
     it('should pass through options correctly', async () => {
       const mockResponse = { name: 'Test File', document: {} };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const options = {
         version: 'v123',
@@ -131,7 +148,7 @@ describe('FigmaFilesService', () => {
 
       await service.getFile('test-key', options);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key', {
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key', {
         version: 'v123',
         ids: '1:2,3:4',
         depth: 2,
@@ -154,11 +171,11 @@ describe('FigmaFilesService', () => {
           '3:4': { id: '3:4', name: 'Node 2' }
         }
       };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.getFileNodes('test-key', '1:2,3:4');
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
         ids: '1:2,3:4'
       });
       expect(result).toEqual(mockResponse);
@@ -171,7 +188,7 @@ describe('FigmaFilesService', () => {
           '3:4': null // Node not found
         }
       };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       await expect(service.getFileNodes('test-key', '1:2,3:4'))
         .rejects.toThrow(NodeNotFoundError);
@@ -179,7 +196,7 @@ describe('FigmaFilesService', () => {
 
     it('should pass through options correctly', async () => {
       const mockResponse = { nodes: {} };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const options = {
         version: 'v123',
@@ -190,7 +207,7 @@ describe('FigmaFilesService', () => {
 
       await service.getFileNodes('test-key', '1:2', options);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
         ids: '1:2',
         version: 'v123',
         depth: 1,
@@ -213,11 +230,11 @@ describe('FigmaFilesService', () => {
           '3:4': 'https://image2.url'
         }
       };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.renderImages('test-key', '1:2,3:4');
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/images/test-key', {
+      expect(mockGet).toHaveBeenCalledWith('/v1/images/test-key', {
         ids: '1:2,3:4'
       });
       expect(result).toEqual(mockResponse);
@@ -230,7 +247,7 @@ describe('FigmaFilesService', () => {
           '3:4': null // Render failed
         }
       };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.renderImages('test-key', '1:2,3:4');
 
@@ -242,7 +259,7 @@ describe('FigmaFilesService', () => {
 
     it('should pass through all options correctly', async () => {
       const mockResponse = { images: {} };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const options = {
         version: 'v123',
@@ -258,7 +275,7 @@ describe('FigmaFilesService', () => {
 
       await service.renderImages('test-key', '1:2', options);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/images/test-key', {
+      expect(mockGet).toHaveBeenCalledWith('/v1/images/test-key', {
         ids: '1:2',
         version: 'v123',
         scale: 2,
@@ -285,11 +302,11 @@ describe('FigmaFilesService', () => {
   describe('getImageFills', () => {
     it('should get image fills', async () => {
       const mockResponse = { images: { 'ref1': 'https://image.url' } };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.getImageFills('test-key');
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key/images');
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/images');
       expect(result).toEqual(mockResponse);
     });
 
@@ -301,11 +318,11 @@ describe('FigmaFilesService', () => {
   describe('getFileMetadata', () => {
     it('should get file metadata', async () => {
       const mockResponse = { name: 'Test File', lastModified: '2023-01-01' };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.getFileMetadata('test-key');
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key/meta');
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/meta');
       expect(result).toEqual(mockResponse);
     });
 
@@ -317,17 +334,17 @@ describe('FigmaFilesService', () => {
   describe('getFileVersions', () => {
     it('should get file versions with basic parameters', async () => {
       const mockResponse = { versions: [] };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const result = await service.getFileVersions('test-key');
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key/versions', {});
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/versions', {});
       expect(result).toEqual(mockResponse);
     });
 
     it('should pass through options correctly', async () => {
       const mockResponse = { versions: [] };
-      mockClient.get.mockResolvedValue(mockResponse);
+      mockGet.mockResolvedValue(mockResponse);
 
       const options = {
         pageSize: 20,
@@ -337,7 +354,7 @@ describe('FigmaFilesService', () => {
 
       await service.getFileVersions('test-key', options);
 
-      expect(mockClient.get).toHaveBeenCalledWith('/v1/files/test-key/versions', {
+      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/versions', {
         page_size: 20,
         before: 123,
         after: 456
@@ -359,7 +376,7 @@ describe('FigmaFilesService', () => {
       const mockResponse1 = { name: 'File 1' };
       const mockResponse2 = { name: 'File 2' };
       
-      mockClient.get
+      mockGet
         .mockResolvedValueOnce(mockResponse1)
         .mockResolvedValueOnce(mockResponse2);
 
@@ -373,7 +390,7 @@ describe('FigmaFilesService', () => {
     it('should handle partial failures', async () => {
       const mockResponse1 = { name: 'File 1' };
       
-      mockClient.get
+      mockGet
         .mockResolvedValueOnce(mockResponse1)
         .mockRejectedValueOnce(new Error('Not found'));
 
@@ -393,7 +410,7 @@ describe('FigmaFilesService', () => {
   describe('utility methods', () => {
     it('should get stats from client', () => {
       const mockStats = { totalRequests: 10 };
-      mockClient.getStats.mockReturnValue(mockStats);
+      mockGetStats.mockReturnValue(mockStats);
 
       const result = service.getStats();
 
@@ -401,7 +418,7 @@ describe('FigmaFilesService', () => {
     });
 
     it('should perform health check via client', async () => {
-      mockClient.healthCheck.mockResolvedValue(true);
+      mockHealthCheck.mockResolvedValue(true);
 
       const result = await service.healthCheck();
 

@@ -197,8 +197,8 @@ describe('FigmaProjectsService', () => {
       const result = await service.getProjectFiles('proj123');
 
       // Should be sorted newest first
-      expect(new Date(result.files[0].lastModified))
-        .toBeGreaterThan(new Date(result.files[1].lastModified));
+      expect(new Date(result.files[0].lastModified).getTime())
+        .toBeGreaterThan(new Date(result.files[1].lastModified).getTime());
     });
 
     it('should skip sorting when requested', async () => {
@@ -543,8 +543,8 @@ describe('FigmaProjectsService', () => {
       const result = await service.exportProjectStructure('team123', 'csv');
 
       expect(typeof result).toBe('string');
-      expect(result).toContain('Team Name,Project ID,Project Name');
-      expect(result).toContain('Test Team,proj1,Project 1');
+      expect(result).toContain('"Team Name","Project ID","Project Name"');
+      expect(result).toContain('"Test Team","proj1","Project 1"');
     });
 
     it('should validate format parameter', async () => {

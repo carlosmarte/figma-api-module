@@ -299,19 +299,20 @@ export class FigmaVariablesClient {
         throw new TimeoutError(this.timeout, 'request');
       }
 
+      let processedError = error;
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new NetworkError('Network request failed', error);
+        processedError = new NetworkError('Network request failed', error);
       }
 
       // Retry logic for transient errors
-      if (this._shouldRetry(error) && attempt < this.retryConfig.maxRetries) {
+      if (this._shouldRetry(processedError) && attempt < this.retryConfig.maxRetries) {
         const delay = this._calculateBackoff(attempt);
         this.logger.debug(`Retrying after ${delay}ms (attempt ${attempt + 1})`);
         await this._sleep(delay);
         return this._executeWithRetry(url, options, attempt + 1);
       }
 
-      throw error;
+      throw processedError;
     }
   }
 

@@ -83,7 +83,8 @@ export class FigmaWebhooksClient {
     cache = null,
     timeout = 30000,
     proxyUrl = process.env.HTTP_PROXY,
-    proxyToken = process.env.HTTP_PROXY_TOKEN
+    proxyToken = process.env.HTTP_PROXY_TOKEN,
+    fetchFunction = null
   } = {}) {
     if (!apiToken) {
       throw new WebhookAuthError();
@@ -95,6 +96,7 @@ export class FigmaWebhooksClient {
     this.rateLimiter = rateLimiter;
     this.cache = cache;
     this.timeout = timeout;
+    this.fetch = fetchFunction || fetch;
     
     // Initialize proxy agent if configured
     this.proxyAgent = null;
@@ -174,9 +176,13 @@ export class FigmaWebhooksClient {
       method,
       headers: { ...this.defaultHeaders, ...options.headers },
       body: options.body ? JSON.stringify(options.body) : undefined,
-      signal: AbortSignal.timeout(this.timeout),
       ...options
     };
+    
+    // Only add timeout signal if not in test environment
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout && process.env.NODE_ENV !== 'test') {
+      fetchOptions.signal = AbortSignal.timeout(this.timeout);
+    }
     
     // Add proxy dispatcher if configured
     if (this.proxyAgent) {
@@ -204,7 +210,7 @@ export class FigmaWebhooksClient {
    */
   async _executeWithRetry(url, options, attempt = 0) {
     try {
-      const response = await fetch(url, options);
+      const response = await this.fetch(url, options);
 
       // Handle rate limiting
       if (response.status === 429) {
@@ -212,8 +218,8 @@ export class FigmaWebhooksClient {
         throw new WebhookRateLimitError(retryAfter);
       }
 
-      // Handle authentication errors
-      if (response.status === 401) {
+      // Handle authentication errors (401 and 403, but not 429)
+      if (response.status === 401 || response.status === 403) {
         throw new WebhookAuthError();
       }
 

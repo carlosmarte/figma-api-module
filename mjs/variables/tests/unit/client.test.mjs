@@ -3,17 +3,36 @@
  */
 
 import { jest } from '@jest/globals';
-import { FigmaVariablesClient } from '../../src/core/client.mjs';
-import { 
+
+// Mock undici before imports
+jest.unstable_mockModule('undici', () => ({
+  fetch: jest.fn(),
+  ProxyAgent: jest.fn()
+}));
+
+// Mock AbortSignal.timeout since it may not be available in test environment
+global.AbortSignal = global.AbortSignal || {};
+global.AbortSignal.timeout = global.AbortSignal.timeout || jest.fn().mockReturnValue({
+  aborted: false,
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn()
+});
+
+const { FigmaVariablesClient } = await import('../../src/core/client.mjs');
+const { 
   AuthenticationError,
   EnterpriseAccessError,
   ValidationError,
   RateLimitError,
-  NetworkError
-} from '../../src/core/exceptions.mjs';
+  NetworkError,
+  ScopeError
+} = await import('../../src/core/exceptions.mjs');
 
-// Mock fetch globally
-global.fetch = jest.fn();
+// Get the mocked fetch from undici
+const { fetch } = await import('undici');
+
+// Make fetch available globally for the tests
+global.fetch = fetch;
 
 describe('FigmaVariablesClient', () => {
   let client;
@@ -21,8 +40,11 @@ describe('FigmaVariablesClient', () => {
   const mockFileKey = 'test-file-key';
 
   beforeEach(() => {
-    client = new FigmaVariablesClient({ accessToken: mockAccessToken });
+    // Reset and setup fetch mock for each test
     fetch.mockClear();
+    fetch.mockReset();
+    
+    client = new FigmaVariablesClient({ accessToken: mockAccessToken });
   });
 
   describe('constructor', () => {
@@ -182,15 +204,34 @@ describe('FigmaVariablesClient', () => {
 
   describe('error handling', () => {
     it('should handle rate limiting', async () => {
-      fetch.mockResolvedValueOnce({
+      // Create a test client with very short retry delays
+      const testClient = new FigmaVariablesClient({ 
+        accessToken: mockAccessToken,
+        timeout: 1000 // Short timeout
+      });
+      
+      // Override retry config for faster testing
+      testClient.retryConfig = {
+        maxRetries: 1,
+        initialDelay: 10,
+        maxDelay: 50,
+        backoffFactor: 1
+      };
+      
+      const mockResponse = {
         ok: false,
         status: 429,
-        headers: new Map([['Retry-After', '60']])
-      });
+        headers: {
+          get: jest.fn().mockReturnValue('1') // Short retry-after
+        },
+        json: jest.fn().mockResolvedValue({message: 'Rate limited'})
+      };
+      
+      fetch.mockImplementation(() => Promise.resolve(mockResponse));
 
-      await expect(client.getLocalVariables(mockFileKey))
+      await expect(testClient.getLocalVariables(mockFileKey))
         .rejects.toThrow(RateLimitError);
-    });
+    }, 10000);
 
     it('should handle authentication errors', async () => {
       fetch.mockResolvedValueOnce({
@@ -204,22 +245,32 @@ describe('FigmaVariablesClient', () => {
     });
 
     it('should handle network errors', async () => {
-      fetch.mockRejectedValueOnce(new TypeError('Network error'));
+      // Create a test client with no retries for this specific test
+      const testClient = new FigmaVariablesClient({ accessToken: mockAccessToken });
+      testClient.retryConfig.maxRetries = 0; // No retries for immediate error
+      
+      const networkError = new TypeError('fetch failed');
+      networkError.cause = new Error('Network error');
+      fetch.mockRejectedValueOnce(networkError);
 
-      await expect(client.getLocalVariables(mockFileKey))
+      await expect(testClient.getLocalVariables(mockFileKey))
         .rejects.toThrow(NetworkError);
     });
   });
 
   describe('retry logic', () => {
     it('should retry on transient failures', async () => {
-      // First call fails, second succeeds
+      // First call fails with network error, second succeeds
+      const networkError = new TypeError('fetch failed');
+      networkError.cause = new Error('Network error');
+      
       fetch
-        .mockRejectedValueOnce(new TypeError('Network error'))
+        .mockRejectedValueOnce(networkError)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          json: async () => ({ status: 200, error: false, meta: {} })
+          json: jest.fn().mockResolvedValue({ status: 200, error: false, meta: {} }),
+          headers: { get: jest.fn() }
         });
 
       const result = await client.getLocalVariables(mockFileKey);
@@ -232,7 +283,9 @@ describe('FigmaVariablesClient', () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: async () => ({ message: 'Bad request' })
+        statusText: 'Bad Request',
+        json: jest.fn().mockResolvedValue({ message: 'Bad request' }),
+        headers: { get: jest.fn() }
       });
 
       await expect(client.getLocalVariables(mockFileKey))
@@ -247,7 +300,8 @@ describe('FigmaVariablesClient', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ status: 200, error: false, meta: {} })
+        json: jest.fn().mockResolvedValue({ status: 200, error: false, meta: {} }),
+        headers: { get: jest.fn() }
       });
 
       const result = await client.getLocalVariables(mockFileKey);
@@ -269,7 +323,8 @@ describe('FigmaVariablesClient', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ status: 200, error: false, meta: {} })
+        json: jest.fn().mockResolvedValue({ status: 200, error: false, meta: {} }),
+        headers: { get: jest.fn() }
       });
 
       await cachedClient.getLocalVariables(mockFileKey);

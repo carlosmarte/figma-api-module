@@ -14,7 +14,7 @@
  *  - Exponential backoff with jitter for retries
  */
 
-import { fetch, ProxyAgent } from 'undici';
+import { fetch, ProxyAgent, setGlobalDispatcher } from 'undici';
 import {
   FigmaApiError,
   RateLimitError,
@@ -64,10 +64,14 @@ export class FigmaFilesClient {
     
     // Initialize proxy agent if configured
     this.proxyAgent = null;
+    this.proxyUrl = proxyUrl;
+    this.proxyToken = proxyToken;
+    
     if (proxyUrl) {
       this.proxyAgent = proxyToken 
         ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
         : new ProxyAgent(proxyUrl);
+      setGlobalDispatcher(this.proxyAgent);
       this.logger.debug(`Proxy configured: ${proxyUrl}`);
     }
   }
@@ -186,13 +190,15 @@ export class FigmaFilesClient {
    * @private
    */
   async _executeRequest(url, options = {}, attempt = 0) {
+    let timeoutId;
+    
     try {
       // Check rate limits before making request
       await this._checkRateLimit();
 
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
       const requestOptions = {
         ...options,
@@ -210,18 +216,40 @@ export class FigmaFilesClient {
 
       this.logger.debug(`Making request: ${options.method || 'GET'} ${url}`);
       
-      const response = await fetch(url, requestOptions);
+      let response;
+      try {
+        response = await fetch(url, requestOptions);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        // Handle timeout
+        if (fetchError.name === 'AbortError') {
+          throw new TimeoutError(this.timeout);
+        }
+        
+        // Handle network errors
+        if (fetchError.name === 'TypeError' && (fetchError.message.includes('fetch') || fetchError.message.includes('Network') || fetchError.message.includes('network'))) {
+          throw new NetworkError('Network request failed', fetchError);
+        }
+        
+        throw fetchError;
+      }
+      
       clearTimeout(timeoutId);
 
       this.stats.totalRequests++;
 
       // Handle successful responses
-      if (response.ok) {
+      if (response && response.ok) {
         this.stats.successfulRequests++;
         return response;
       }
 
       // Handle error responses
+      if (!response) {
+        throw new NetworkError('No response received from server');
+      }
+      
       let body = null;
       try {
         const contentType = response.headers.get('content-type');
@@ -244,29 +272,25 @@ export class FigmaFilesClient {
     } catch (error) {
       this.stats.failedRequests++;
 
-      // Handle timeout
-      if (error.name === 'AbortError') {
-        throw new TimeoutError(this.timeout);
-      }
-
-      // Handle network errors
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new NetworkError('Network request failed', error);
-      }
-
-      // Retry logic for retryable errors
-      if (attempt < this.retryConfig.maxRetries && isRetryableError(error)) {
-        this.stats.retryAttempts++;
-        const delay = this._calculateBackoffDelay(attempt);
+      // If error is already one of our custom error types, just throw it
+      if (error instanceof FigmaApiError || error instanceof TimeoutError || error instanceof NetworkError) {
+        // Retry logic for retryable errors
+        if (attempt < this.retryConfig.maxRetries && isRetryableError(error)) {
+          this.stats.retryAttempts++;
+          const delay = this._calculateBackoffDelay(attempt);
+          
+          this.logger.debug(
+            `Retrying request after ${delay}ms (attempt ${attempt + 1}/${this.retryConfig.maxRetries})`
+          );
+          
+          await this._sleep(delay);
+          return this._executeRequest(url, options, attempt + 1);
+        }
         
-        this.logger.debug(
-          `Retrying request after ${delay}ms (attempt ${attempt + 1}/${this.retryConfig.maxRetries})`
-        );
-        
-        await this._sleep(delay);
-        return this._executeRequest(url, options, attempt + 1);
+        throw error;
       }
 
+      // Handle any other unexpected errors
       throw error;
     }
   }
