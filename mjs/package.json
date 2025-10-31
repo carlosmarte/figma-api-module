@@ -1,0 +1,77 @@
+{
+  "name": "figma-api-module",
+  "version": "1.0.0",
+  "description": "Comprehensive collection of Figma API clients and SDKs",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "comments",
+    "components",
+    "dev-resources",
+    "files",
+    "figma-fetch",
+    "library-analytics",
+    "projects",
+    "variables",
+    "webhooks"
+  ],
+  "scripts": {
+    "test": "node --experimental-vm-modules ./node_modules/.bin/jest",
+    "test:coverage": "npm test -- --coverage",
+    "test:watch": "npm test -- --watch",
+    "test:no-coverage": "node --experimental-vm-modules ./node_modules/.bin/jest --collectCoverage=false",
+    "test:workspaces": "npm run test --workspaces --if-present",
+    "test:comments": "npm run test --workspace=comments",
+    "test:components": "npm run test --workspace=components",
+    "test:dev-resources": "npm run test --workspace=dev-resources",
+    "test:files": "npm run test --workspace=files",
+    "test:figma-fetch": "npm run test --workspace=figma-fetch",
+    "test:library-analytics": "npm run test --workspace=library-analytics",
+    "test:projects": "npm run test --workspace=projects",
+    "test:variables": "npm run test --workspace=variables",
+    "test:webhooks": "npm run test --workspace=webhooks",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "npm run format --workspaces --if-present",
+    "publish:comments": "npm publish --workspace=comments",
+    "publish:components": "npm publish --workspace=components",
+    "publish:dev-resources": "npm publish --workspace=dev-resources",
+    "publish:files": "npm publish --workspace=files",
+    "publish:figma-fetch": "npm publish --workspace=figma-fetch",
+    "publish:library-analytics": "npm publish --workspace=library-analytics",
+    "publish:projects": "npm publish --workspace=projects",
+    "publish:variables": "npm publish --workspace=variables",
+    "publish:webhooks": "npm publish --workspace=webhooks",
+    "publish:all": "npm publish --workspaces",
+    "version:patch": "npm version patch --workspaces",
+    "version:minor": "npm version minor --workspaces",
+    "version:major": "npm version major --workspaces",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "install:all": "npm install"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "keywords": [
+    "figma",
+    "api",
+    "sdk",
+    "client",
+    "monorepo",
+    "workspaces"
+  ],
+  "author": "thinkeloquent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/figma/figma-api-module.git"
+  },
+  "bugs": {
+    "url": "https://github.com/figma/figma-api-module/issues"
+  },
+  "homepage": "https://github.com/figma/figma-api-module#readme",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0"
+  }
+}

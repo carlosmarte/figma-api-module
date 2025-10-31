@@ -1,0 +1,41 @@
+{
+  "env": {
+    "es2022": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "indent": ["error", 2],
+    "linebreak-style": ["error", "unix"],
+    "quotes": ["error", "single"],
+    "semi": ["error", "always"],
+    "no-console": "off",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "eqeqeq": "error",
+    "curly": "error",
+    "brace-style": ["error", "1tbs"],
+    "comma-dangle": ["error", "never"],
+    "no-trailing-spaces": "error",
+    "eol-last": "error",
+    "max-len": ["warn", { "code": 120 }]
+  },
+  "overrides": [
+    {
+      "files": ["*.test.mjs", "*.spec.mjs"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "no-unused-expressions": "off"
+      }
+    }
+  ]
+}

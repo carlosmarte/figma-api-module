@@ -1,0 +1,87 @@
+{
+  "name": "@figma-api/fetch",
+  "version": "1.0.0",
+  "description": "Abstract fetch client for Figma API with composable utilities",
+  "type": "module",
+  "main": "./lib/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./lib/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./adapters": {
+      "import": "./dist/adapters/index.mjs",
+      "require": "./lib/adapters/index.js",
+      "types": "./dist/adapters/index.d.ts"
+    },
+    "./utils": {
+      "import": "./dist/utils/index.mjs",
+      "require": "./lib/utils/index.js",
+      "types": "./dist/utils/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client/index.mjs",
+      "require": "./lib/client/index.js",
+      "types": "./dist/client/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "rm -rf dist lib *.tsbuildinfo",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run rename:mjs && npm run fix:imports",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "rename:mjs": "find dist -name '*.js' -type f ! -name '*.d.ts' -exec sh -c 'mv \"$1\" \"${1%.js}.mjs\"' _ {} \\;",
+    "fix:imports": "find dist -name '*.mjs' -type f -exec sed -i '' \"s/from '\\(.*\\)\\.js'/from '\\1.mjs'/g\" {} \\; && find dist -name '*.mjs' -type f -exec sed -i '' 's/from \"\\(.*\\)\\.js\"/from \"\\1.mjs\"/g' {} \\;",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:unit": "node --experimental-vm-modules node_modules/.bin/jest tests/unit",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "figma",
+    "api",
+    "fetch",
+    "http",
+    "client",
+    "adapter",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "undici": "^6.0.0"
+  },
+  "peerDependencies": {
+    "undici": "^6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "undici": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
