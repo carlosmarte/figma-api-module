@@ -116,3 +116,64 @@ export class AliasError extends BaseError {
     super(message, 'ALIAS_ERROR', { aliasId, targetId });
   }
 }
+
+/**
+ * Alias for backward compatibility
+ */
+export { BaseError as FigmaApiError };
+
+/**
+ * Utility function to create appropriate error from HTTP response
+ * @param {Response} response - Fetch API response object
+ * @param {string} url - Request URL
+ * @param {any} responseData - Parsed response data
+ * @returns {BaseError} Appropriate error instance
+ */
+export function createErrorFromResponse(response, url, responseData = null) {
+  const { status, statusText } = response;
+
+  // Handle specific status codes
+  switch (status) {
+    case 401:
+      return new AuthenticationError(
+        'Invalid or missing API token'
+      );
+
+    case 403:
+      return new EnterpriseAccessError();
+
+    case 404:
+      return new NotFoundError('Resource', url);
+
+    case 429:
+      const retryAfter = response.headers.get('Retry-After') || '60';
+      return new RateLimitError(parseInt(retryAfter, 10));
+
+    default:
+      return new ApiError(
+        `HTTP ${status}: ${statusText}`,
+        'HTTP_ERROR'
+      );
+  }
+}
+
+/**
+ * Utility function to determine if an error is retryable
+ * @param {Error} error - Error to check
+ * @returns {boolean} True if error is retryable
+ */
+export function isRetryableError(error) {
+  if (error instanceof RateLimitError) {
+    return true;
+  }
+
+  if (error instanceof NetworkError) {
+    return true;
+  }
+
+  if (error instanceof TimeoutError) {
+    return true;
+  }
+
+  return false;
+}

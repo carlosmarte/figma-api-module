@@ -11,13 +11,16 @@ const mockPost = jest.fn();
 const mockGetStats = jest.fn();
 const mockHealthCheck = jest.fn();
 
+const MockClient = jest.fn().mockImplementation(() => ({
+  get: mockGet,
+  post: mockPost,
+  getStats: mockGetStats,
+  healthCheck: mockHealthCheck
+}));
+
 jest.unstable_mockModule('../../src/core/client.mjs', () => ({
-  default: jest.fn().mockImplementation(() => ({
-    get: mockGet,
-    post: mockPost,
-    getStats: mockGetStats,
-    healthCheck: mockHealthCheck
-  }))
+  FigmaFilesClient: MockClient,
+  default: MockClient
 }));
 
 // Import the service after mocking the client
@@ -30,15 +33,20 @@ describe('FigmaFilesService', () => {
 
   beforeEach(() => {
     // Reset all mocks before each test
-    mockGet.mockReset();
-    mockPost.mockReset();
-    mockGetStats.mockReset();
-    mockHealthCheck.mockReset();
-    
+    jest.clearAllMocks();
+
+    // Restore the mock implementation for MockClient
+    MockClient.mockImplementation(() => ({
+      get: mockGet,
+      post: mockPost,
+      getStats: mockGetStats,
+      healthCheck: mockHealthCheck
+    }));
+
     // Set default return values
     mockGetStats.mockReturnValue({ totalRequests: 0 });
     mockHealthCheck.mockResolvedValue(true);
-    
+
     service = new FigmaFilesService({
       apiToken: mockApiToken,
       logger: { debug: jest.fn(), error: jest.fn(), warn: jest.fn() }

@@ -39,7 +39,8 @@ export class FigmaFilesClient extends FigmaApiClient {
     rateLimitConfig = {},
     proxyUrl = process.env.HTTP_PROXY,
     proxyToken = process.env.HTTP_PROXY_TOKEN,
-    fetchFunction = null
+    fetchFunction = null,
+    fetchAdapter = null
   } = {}) {
     // Check for API token before calling parent for backward compatibility
     if (!apiToken && !process.env.FIGMA_TOKEN) {
@@ -47,11 +48,13 @@ export class FigmaFilesClient extends FigmaApiClient {
     }
 
     // Prepare fetch adapter with proxy support if needed
-    let fetchAdapter;
-    if (fetchFunction) {
-      fetchAdapter = fetchFunction;
+    let adapter;
+    if (fetchAdapter) {
+      adapter = fetchAdapter;
+    } else if (fetchFunction) {
+      adapter = fetchFunction;
     } else if (proxyUrl) {
-      fetchAdapter = new UndiciFetchAdapter({
+      adapter = new UndiciFetchAdapter({
         url: proxyUrl,
         token: proxyToken
       });
@@ -66,7 +69,7 @@ export class FigmaFilesClient extends FigmaApiClient {
       cache: { maxSize: 100, ttl: 300000 },
       timeout,
       retry: retryConfig.maxRetries !== undefined ? retryConfig : { maxRetries: 3 },
-      fetchAdapter
+      fetchAdapter: adapter
     });
   }
 

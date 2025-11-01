@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Node.js client and CLI for Figma Dev Resources API",
   "type": "module",
-  "main": "sdk.mjs",
-  "types": "types.d.ts",
+  "main": "./sdk.mjs",
+  "types": "./types.d.ts",
   "bin": {
-    "figma-dev-resources": "./cli.mjs"
+    "figma-dev-resources": "cli.mjs"
   },
   "scripts": {
     "test": "node --experimental-vm-modules ../node_modules/.bin/jest",
@@ -30,7 +30,8 @@
   "author": "thinkeloquent",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
   },
   "dependencies": {
     "commander": "^12.0.0",
@@ -56,16 +57,16 @@
   "homepage": "https://github.com/thinkeloquent/figma-api-module/tree/main/mjs/dev-resources#readme",
   "exports": {
     ".": {
-      "import": "./sdk.mjs",
-      "types": "./types.d.ts"
+      "types": "./types.d.ts",
+      "import": "./sdk.mjs"
     },
     "./client": {
-      "import": "./client.mjs",
-      "types": "./types.d.ts"
+      "types": "./types.d.ts",
+      "import": "./client.mjs"
     },
     "./sdk": {
-      "import": "./sdk.mjs",
-      "types": "./types.d.ts"
+      "types": "./types.d.ts",
+      "import": "./sdk.mjs"
     },
     "./types": {
       "types": "./types.d.ts"

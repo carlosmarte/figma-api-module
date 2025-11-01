@@ -84,7 +84,8 @@ export class FigmaWebhooksClient extends FigmaApiClient {
     timeout = 30000,
     proxyUrl = process.env.HTTP_PROXY,
     proxyToken = process.env.HTTP_PROXY_TOKEN,
-    fetchFunction = null
+    fetchFunction = null,
+    fetchAdapter = null
   } = {}) {
     // Check for API token before calling parent
     if (!apiToken && !process.env.FIGMA_TOKEN) {
@@ -92,7 +93,8 @@ export class FigmaWebhooksClient extends FigmaApiClient {
     }
 
     // Prepare fetch adapter with proxy support if needed
-    const fetchAdapter = fetchFunction || (proxyUrl ? new UndiciFetchAdapter({
+    // Prioritize: fetchAdapter > fetchFunction > proxyUrl
+    const adapter = fetchAdapter || fetchFunction || (proxyUrl ? new UndiciFetchAdapter({
       url: proxyUrl,
       token: proxyToken
     }) : undefined);
@@ -105,7 +107,7 @@ export class FigmaWebhooksClient extends FigmaApiClient {
       rateLimiter,
       cache,
       timeout,
-      fetchAdapter
+      fetchAdapter: adapter
     });
 
     this._initializeDefaults();

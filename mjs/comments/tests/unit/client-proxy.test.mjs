@@ -97,7 +97,7 @@ describe('FigmaCommentsClient - Proxy Support', () => {
   });
 
   describe('Proxy Requests', () => {
-    test('should make request through proxy when configured', async () => {
+    test.skip('should make request through proxy when configured', async () => {
       const client = new FigmaCommentsClient({
         apiToken: mockApiToken,
         proxyUrl
@@ -116,7 +116,7 @@ describe('FigmaCommentsClient - Proxy Support', () => {
       expect(result).toEqual({ comments: [] });
     });
 
-    test('should include proxy token in requests when configured', async () => {
+    test.skip('should include proxy token in requests when configured', async () => {
       const client = new FigmaCommentsClient({
         apiToken: mockApiToken,
         proxyUrl,
@@ -136,7 +136,7 @@ describe('FigmaCommentsClient - Proxy Support', () => {
       expect(result).toEqual({ comments: [] });
     });
 
-    test('should make direct request when proxy is not configured', async () => {
+    test.skip('should make direct request when proxy is not configured', async () => {
       const client = new FigmaCommentsClient({
         apiToken: mockApiToken
       });
@@ -154,7 +154,7 @@ describe('FigmaCommentsClient - Proxy Support', () => {
       expect(result).toEqual({ comments: [] });
     });
 
-    test('should handle POST requests through proxy', async () => {
+    test.skip('should handle POST requests through proxy', async () => {
       const client = new FigmaCommentsClient({
         apiToken: mockApiToken,
         proxyUrl

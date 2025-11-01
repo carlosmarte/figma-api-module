@@ -268,3 +268,8 @@ export function getRetryDelay(error, attempt) {
 
   return Math.min(exponentialDelay + jitter, maxDelay);
 }
+
+/**
+ * Alias for backward compatibility
+ */
+export { FigmaProjectsError as FigmaApiError };

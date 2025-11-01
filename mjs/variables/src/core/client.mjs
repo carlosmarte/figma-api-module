@@ -37,17 +37,20 @@ export class FigmaVariablesClient extends FigmaApiClient {
     rateLimitConfig = {},
     proxyUrl = process.env.HTTP_PROXY,
     proxyToken = process.env.HTTP_PROXY_TOKEN,
-    fetchFunction = null
+    fetchFunction = null,
+    fetchAdapter = null
   } = {}) {
     if (!apiToken && !process.env.FIGMA_TOKEN) {
       throw new AuthenticationError('API token is required');
     }
 
-    let fetchAdapter;
-    if (fetchFunction) {
-      fetchAdapter = fetchFunction;
+    let adapter;
+    if (fetchAdapter) {
+      adapter = fetchAdapter;
+    } else if (fetchFunction) {
+      adapter = fetchFunction;
     } else if (proxyUrl) {
-      fetchAdapter = new UndiciFetchAdapter({
+      adapter = new UndiciFetchAdapter({
         url: proxyUrl,
         token: proxyToken
       });
@@ -61,7 +64,7 @@ export class FigmaVariablesClient extends FigmaApiClient {
       cache: { maxSize: 100, ttl: 300000 },
       timeout,
       retry: retryConfig.maxRetries !== undefined ? retryConfig : { maxRetries: 3 },
-      fetchAdapter
+      fetchAdapter: adapter
     });
   }
 

@@ -311,19 +311,21 @@ export class FigmaFilesService {
 
     this.logger.debug(`Batch getting ${fileKeys.length} files`);
 
-    const promises = fileKeys.map(fileKey => 
-      this.getFile(fileKey, options).catch(error => ({
-        fileKey,
-        error: error.message,
-        success: false
-      }))
+    const promises = fileKeys.map(fileKey =>
+      this.getFile(fileKey, options)
+        .then(data => ({ success: true, fileKey, data }))
+        .catch(error => ({
+          success: false,
+          fileKey,
+          error: error.message
+        }))
     );
 
     const results = await Promise.all(promises);
-    
+
     // Separate successful and failed results
-    const successful = results.filter(result => !result.error);
-    const failed = results.filter(result => result.error);
+    const successful = results.filter(result => result.success === true).map(r => r.data);
+    const failed = results.filter(result => result.success === false);
 
     if (failed.length > 0) {
       this.logger.warn(`Failed to get ${failed.length} files:`, failed);

@@ -3,17 +3,36 @@
   "version": "1.0.0",
   "description": "Node.js client for Figma Variables API",
   "type": "module",
-  "main": "index.mjs",
+  "main": "./index.mjs",
+  "types": "./index.d.mts",
   "exports": {
-    ".": "./index.mjs",
-    "./client": "./src/core/client.mjs",
-    "./service": "./src/core/service.mjs",
-    "./exceptions": "./src/core/exceptions.mjs",
-    "./sdk": "./src/interfaces/sdk.mjs",
-    "./cli": "./src/interfaces/cli.mjs"
+    ".": {
+      "types": "./index.d.mts",
+      "import": "./index.mjs"
+    },
+    "./client": {
+      "types": "./src/core/client.d.mts",
+      "import": "./src/core/client.mjs"
+    },
+    "./service": {
+      "types": "./src/core/service.d.mts",
+      "import": "./src/core/service.mjs"
+    },
+    "./exceptions": {
+      "types": "./src/core/exceptions.d.mts",
+      "import": "./src/core/exceptions.mjs"
+    },
+    "./sdk": {
+      "types": "./src/interfaces/sdk.d.mts",
+      "import": "./src/interfaces/sdk.mjs"
+    },
+    "./cli": {
+      "types": "./src/interfaces/cli.d.mts",
+      "import": "./src/interfaces/cli.mjs"
+    }
   },
   "bin": {
-    "figma-variables": "./src/interfaces/cli.mjs"
+    "figma-variables": "src/interfaces/cli.mjs"
   },
   "scripts": {
     "test": "node --experimental-vm-modules ../node_modules/.bin/jest",
@@ -36,13 +55,15 @@
   "files": [
     "src",
     "index.mjs",
+    "index.d.mts",
     "README.md"
   ],
   "publishConfig": {
     "access": "public"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
   },
   "dependencies": {
     "commander": "^12.0.0",
@@ -55,5 +76,14 @@
     "jest": "^29.7.0",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thinkeloquent/figma-api-module.git",
+    "directory": "mjs/variables"
+  },
+  "bugs": {
+    "url": "https://github.com/thinkeloquent/figma-api-module/issues"
+  },
+  "homepage": "https://github.com/thinkeloquent/figma-api-module/tree/main/mjs/variables#readme"
 }
