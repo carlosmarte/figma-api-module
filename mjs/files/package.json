@@ -16,6 +16,7 @@
     "figma-files": "src/interfaces/cli.mjs"
   },
   "scripts": {
+    "build": "echo 'No build step required for ES modules'",
     "test": "node --experimental-vm-modules ../node_modules/.bin/jest",
     "lint": "eslint .",
     "format": "prettier --write .",

@@ -9,6 +9,7 @@
     "figma-dev-resources": "cli.mjs"
   },
   "scripts": {
+    "build": "echo 'No build step required for ES modules'",
     "test": "node --experimental-vm-modules ../node_modules/.bin/jest",
     "test:watch": "npm test -- --watch",
     "test:coverage": "npm test -- --coverage",
