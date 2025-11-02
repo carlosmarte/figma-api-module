@@ -34,7 +34,7 @@ export {
 } from './src/core/exceptions.mjs';
 
 // Utility classes
-export { RateLimiter, RequestCache } from './src/core/client.mjs';
+export { RateLimiter, RequestCache } from '../figma-fetch/dist/index.mjs';
 
 // Default export - the main SDK
 export { FigmaCommentsSDK as default } from './src/interfaces/sdk.mjs';
