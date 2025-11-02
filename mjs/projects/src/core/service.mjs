@@ -16,16 +16,16 @@ import {
 export class FigmaProjectsService {
   /**
    * @param {object} options - Service configuration
-   * @param {FigmaProjectsClient} options.client - HTTP client instance
+   * @param {object} options.fetcher - FigmaApiClient instance (required)
    * @param {object} [options.logger=console] - Logger instance
    * @param {object} [options.config={}] - Service configuration
    */
-  constructor({ client, logger = console, config = {} } = {}) {
-    if (!client) {
-      throw new ValidationError('Client instance is required', 'client', client);
+  constructor({ fetcher, logger = console, config = {} } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
     }
 
-    this.client = client;
+    this.fetcher = fetcher;
     this.logger = logger;
     this.config = {
       maxConcurrentRequests: 5,
@@ -50,7 +50,7 @@ export class FigmaProjectsService {
     try {
       this.logger.debug('Fetching team projects', { teamId, options });
 
-      const response = await this.client.getTeamProjects(teamId);
+      const response = await this.fetcher.getTeamProjects(teamId);
       
       if (!response || !response.projects) {
         throw new ValidationError('Invalid response structure', 'response.projects', response);
@@ -110,7 +110,7 @@ export class FigmaProjectsService {
     try {
       this.logger.debug('Fetching project files', { projectId, options });
 
-      const response = await this.client.getProjectFiles(projectId, {
+      const response = await this.fetcher.getProjectFiles(projectId, {
         branchData: options.branchData
       });
 

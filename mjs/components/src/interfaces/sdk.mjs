@@ -9,19 +9,24 @@ import FigmaComponentsService from '../core/service.mjs';
 /**
  * High-level SDK for Figma Components API operations
  * Provides simplified interface for common use cases
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaComponentsSDK } from 'figma-components-api';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaComponentsSDK({ fetcher });
  */
 export class FigmaComponentsSDK {
   /**
    * @param {Object} config - SDK configuration
-   * @param {string} config.apiToken - Figma personal access token
-   * @param {Object} [config.logger] - Logger instance
-   * @param {Object} [config.clientConfig] - HTTP client configuration
+   * @param {Object} config.fetcher - FigmaApiClient instance (required)
+   * @param {Object} [config.logger=console] - Logger instance
    */
-  constructor({ apiToken, logger = console, clientConfig = {} } = {}) {
+  constructor({ fetcher, logger = console } = {}) {
     this.service = new FigmaComponentsService({
-      apiToken,
-      logger,
-      clientConfig
+      fetcher,
+      logger
     });
     this.logger = logger;
   }

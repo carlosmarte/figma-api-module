@@ -37,13 +37,20 @@ function getSDK(options, command) {
     process.exit(1);
   }
 
-  return new FigmaProjectsSDK({
-    apiToken,
-    timeout: parseInt(globalOpts.timeout, 10),
-    maxRetries: parseInt(globalOpts.maxRetries, 10),
-    enableCache: globalOpts.cache !== false,
-    enableMetrics: globalOpts.metrics !== false,
-    logger: globalOpts.verbose ? console : { debug: () => {}, warn: () => {}, error: console.error }
+  // Import FigmaApiClient dynamically
+  return import('@figma-api/fetch').then(({ FigmaApiClient }) => {
+    const fetcher = new FigmaApiClient({
+      apiToken,
+      timeout: parseInt(globalOpts.timeout, 10),
+      maxRetries: parseInt(globalOpts.maxRetries, 10),
+      enableCache: globalOpts.cache !== false,
+      enableMetrics: globalOpts.metrics !== false
+    });
+
+    return new FigmaProjectsSDK({
+      fetcher,
+      logger: globalOpts.verbose ? console : { debug: () => {}, warn: () => {}, error: console.error }
+    });
   });
 }
 
@@ -133,14 +140,14 @@ program
   .option('--include-stats', 'Include project statistics')
   .action(async (options, command) => {
     const spinner = ora('Fetching team projects...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.getTeamProjects(options.teamId, {
         includeStats: options.includeStats
       });
-      
+
       spinner.succeed(`Found ${result.totalCount} projects`);
       displayOutput(result, globalOpts.format, `Projects in ${result.team.name}`);
     } catch (error) {
@@ -157,14 +164,14 @@ program
   .option('--branch-data', 'Include branch metadata')
   .action(async (options, command) => {
     const spinner = ora('Fetching project files...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.getProjectFiles(options.projectId, {
         branchData: options.branchData
       });
-      
+
       spinner.succeed(`Found ${result.totalCount} files`);
       displayOutput(result, globalOpts.format, `Files in ${result.project.name}`);
     } catch (error) {
@@ -182,15 +189,15 @@ program
   .option('--exclude-empty', 'Exclude projects with no files')
   .action(async (options, command) => {
     const spinner = ora('Building project tree...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.getProjectTree(options.teamId, {
         maxConcurrency: parseInt(options.maxConcurrency, 10),
         includeEmptyProjects: !options.excludeEmpty
       });
-      
+
       spinner.succeed(`Built tree with ${result.totalProjects} projects and ${result.totalFiles} files`);
       displayOutput(result, globalOpts.format, `Project Tree for ${result.team.name}`);
     } catch (error) {
@@ -209,15 +216,15 @@ program
   .option('--exact-match', 'Exact match only')
   .action(async (options, command) => {
     const spinner = ora(`Searching for "${options.query}"...`).start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.searchProjects(options.teamId, options.query, {
         caseSensitive: options.caseSensitive,
         exactMatch: options.exactMatch
       });
-      
+
       spinner.succeed(`Found ${result.totalMatches} matches out of ${result.totalProjects} projects`);
       displayOutput(result.results, globalOpts.format, `Search Results for "${options.query}"`);
     } catch (error) {
@@ -233,12 +240,12 @@ program
   .requiredOption('--project-id <id>', 'Project ID')
   .action(async (options, command) => {
     const spinner = ora('Calculating project statistics...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.getProjectStats(options.projectId);
-      
+
       spinner.succeed('Statistics calculated');
       
       if (globalOpts.format === 'table') {
@@ -280,9 +287,9 @@ program
   .option('--output <file>', 'Output file (default: stdout)')
   .action(async (options, command) => {
     const spinner = ora(`Exporting project structure as ${options.format}...`).start();
-    const sdk = getSDK(options, command);
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.exportProjects(options.teamId, options.format);
       
       spinner.succeed('Export completed');
@@ -310,15 +317,15 @@ program
   .option('--partial-match', 'Allow partial name matches')
   .action(async (options, command) => {
     const spinner = ora(`Searching for file "${options.fileName}"...`).start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.findFile(options.projectId, options.fileName, {
         caseSensitive: options.caseSensitive,
         exactMatch: !options.partialMatch
       });
-      
+
       spinner.succeed('File found');
       displayOutput(result, globalOpts.format, `File: ${result.name}`);
     } catch (error) {
@@ -336,16 +343,16 @@ program
   .option('--days <count>', 'Number of days to look back', '7')
   .action(async (options, command) => {
     const spinner = ora('Fetching recent files...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.getRecentFiles(
         options.teamId,
         parseInt(options.limit, 10),
         parseInt(options.days, 10)
       );
-      
+
       spinner.succeed(`Found ${result.totalFound} recent files`);
       
       if (globalOpts.format === 'table') {
@@ -372,12 +379,12 @@ program
   .description('Check API connectivity and authentication')
   .action(async (options, command) => {
     const spinner = ora('Checking API health...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.healthCheck();
-      
+
       if (result.status === 'healthy') {
         spinner.succeed('API is healthy');
         
@@ -411,10 +418,10 @@ program
   .command('metrics')
   .description('Show SDK performance metrics')
   .action(async (options, command) => {
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const metrics = sdk.getMetrics();
       
       if (globalOpts.format === 'table') {
@@ -455,16 +462,16 @@ program
   .option('--recent-limit <count>', 'Limit for recent files', '20')
   .action(async (options, command) => {
     const spinner = ora('Generating team overview...').start();
-    const sdk = getSDK(options, command);
     const globalOpts = command.optsWithGlobals();
 
     try {
+      const sdk = await getSDK(options, command);
       const result = await sdk.getTeamOverview(options.teamId, {
         includeStats: options.stats !== false,
         includeRecentFiles: options.recent !== false,
         recentFilesLimit: parseInt(options.recentLimit, 10)
       });
-      
+
       spinner.succeed('Team overview generated');
       
       if (globalOpts.format === 'table') {

@@ -3,34 +3,13 @@
  */
 
 import { jest } from '@jest/globals';
-
-// Mock the client before importing anything that uses it
-const mockClient = {
-  get: jest.fn(),
-  request: jest.fn(),
-  getStats: jest.fn(() => ({ totalRequests: 0 })),
-  healthCheck: jest.fn(() => Promise.resolve(true))
-};
-
-// Create a mock constructor class that returns our mock client
-class MockFigmaComponentsClient {
-  constructor() {
-    return mockClient;
-  }
-}
-
-jest.unstable_mockModule('../../src/core/client.mjs', () => ({
-  default: MockFigmaComponentsClient,
-  FigmaComponentsClient: MockFigmaComponentsClient
-}));
-
-// Import after mocking
-const { FigmaComponentsService } = await import('../../src/core/service.mjs');
-const { ValidationError, PaginationError } = await import('../../src/core/exceptions.mjs');
+import { FigmaComponentsService } from '../../src/core/service.mjs';
+import { ValidationError, PaginationError } from '../../src/core/exceptions.mjs';
 
 describe('FigmaComponentsService', () => {
   let service;
   let mockLogger;
+  let mockFetcher;
 
   beforeEach(async () => {
     mockLogger = {
@@ -39,14 +18,23 @@ describe('FigmaComponentsService', () => {
       error: jest.fn()
     };
 
+    mockFetcher = {
+      get: jest.fn(),
+      post: jest.fn(),
+      request: jest.fn(),
+      getStats: jest.fn(() => ({ totalRequests: 0 })),
+      healthCheck: jest.fn(() => Promise.resolve(true))
+    };
+
     service = new FigmaComponentsService({
-      apiToken: 'test-token',
+      fetcher: mockFetcher,
       logger: mockLogger
     });
 
     // Clear and reset mocks
-    mockClient.get.mockClear();
-    mockClient.request.mockClear();
+    mockFetcher.get.mockClear();
+    mockFetcher.post.mockClear();
+    mockFetcher.request.mockClear();
   });
 
   describe('validation methods', () => {
@@ -121,24 +109,24 @@ describe('FigmaComponentsService', () => {
           meta: { total_count: 1 }
         };
         
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getTeamComponents('123456');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/teams/123456/components', {});
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/teams/123456/components', {});
         expect(result).toEqual(mockResponse);
       });
 
       it('should handle pagination options', async () => {
         const mockResponse = { components: [] };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         await service.getTeamComponents('123456', {
           pageSize: 50,
           after: 100
         });
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/teams/123456/components', {
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/teams/123456/components', {
           page_size: 50,
           after: 100
         });
@@ -152,11 +140,11 @@ describe('FigmaComponentsService', () => {
     describe('getFileComponents', () => {
       it('should fetch file components successfully', async () => {
         const mockResponse = { components: [] };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getFileComponents('abc123');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/files/abc123/components');
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/abc123/components');
         expect(result).toEqual(mockResponse);
       });
 
@@ -170,11 +158,11 @@ describe('FigmaComponentsService', () => {
         const mockResponse = { 
           meta: { node: { name: 'Button' } }
         };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getComponent('123:456');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/components/123:456');
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/components/123:456');
         expect(result).toEqual(mockResponse);
       });
 
@@ -190,11 +178,11 @@ describe('FigmaComponentsService', () => {
         const mockResponse = { 
           component_sets: [{ name: 'ButtonSet', key: '123:456' }]
         };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getTeamComponentSets('123456');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/teams/123456/component_sets', {});
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/teams/123456/component_sets', {});
         expect(result).toEqual(mockResponse);
       });
     });
@@ -202,11 +190,11 @@ describe('FigmaComponentsService', () => {
     describe('getFileComponentSets', () => {
       it('should fetch file component sets successfully', async () => {
         const mockResponse = { component_sets: [] };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getFileComponentSets('abc123');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/files/abc123/component_sets');
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/abc123/component_sets');
         expect(result).toEqual(mockResponse);
       });
     });
@@ -216,11 +204,11 @@ describe('FigmaComponentsService', () => {
         const mockResponse = { 
           meta: { node: { name: 'ButtonSet' } }
         };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getComponentSet('123:456');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/component_sets/123:456');
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/component_sets/123:456');
         expect(result).toEqual(mockResponse);
       });
     });
@@ -232,11 +220,11 @@ describe('FigmaComponentsService', () => {
         const mockResponse = { 
           styles: [{ name: 'Primary Color', key: '123:456' }]
         };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getTeamStyles('123456');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/teams/123456/styles', {});
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/teams/123456/styles', {});
         expect(result).toEqual(mockResponse);
       });
     });
@@ -244,11 +232,11 @@ describe('FigmaComponentsService', () => {
     describe('getFileStyles', () => {
       it('should fetch file styles successfully', async () => {
         const mockResponse = { styles: [] };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getFileStyles('abc123');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/files/abc123/styles');
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/abc123/styles');
         expect(result).toEqual(mockResponse);
       });
     });
@@ -258,11 +246,11 @@ describe('FigmaComponentsService', () => {
         const mockResponse = { 
           meta: { node: { name: 'Primary Color' } }
         };
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.getStyle('123:456');
 
-        expect(mockClient.get).toHaveBeenCalledWith('/v1/styles/123:456');
+        expect(mockFetcher.get).toHaveBeenCalledWith('/v1/styles/123:456');
         expect(result).toEqual(mockResponse);
       });
     });
@@ -274,7 +262,7 @@ describe('FigmaComponentsService', () => {
         const mockComponent1 = { meta: { node: { name: 'Button' } } };
         const mockComponent2 = { meta: { node: { name: 'Input' } } };
 
-        mockClient.get
+        mockFetcher.get
           .mockResolvedValueOnce(mockComponent1)
           .mockResolvedValueOnce(mockComponent2);
 
@@ -288,7 +276,7 @@ describe('FigmaComponentsService', () => {
       it('should handle partial failures', async () => {
         const mockComponent = { meta: { node: { name: 'Button' } } };
 
-        mockClient.get
+        mockFetcher.get
           .mockResolvedValueOnce(mockComponent)
           .mockRejectedValueOnce(new Error('Component not found'));
 
@@ -313,7 +301,7 @@ describe('FigmaComponentsService', () => {
         const mockComponentSets = { component_sets: [{ name: 'ButtonSet' }] };
         const mockStyles = { styles: [{ name: 'Primary' }] };
 
-        mockClient.get
+        mockFetcher.get
           .mockResolvedValueOnce(mockComponents)
           .mockResolvedValueOnce(mockComponentSets)
           .mockResolvedValueOnce(mockStyles);
@@ -339,7 +327,7 @@ describe('FigmaComponentsService', () => {
           ]
         };
 
-        mockClient.get.mockResolvedValueOnce(mockResponse);
+        mockFetcher.get.mockResolvedValueOnce(mockResponse);
 
         const result = await service.searchTeamComponentsByName('123456', 'button');
 
@@ -358,13 +346,13 @@ describe('FigmaComponentsService', () => {
   describe('utility methods', () => {
     it.skip('should get client statistics', () => {
       const result = service.getStats();
-      expect(mockClient.getStats).toHaveBeenCalled();
+      expect(mockFetcher.getStats).toHaveBeenCalled();
       expect(result.totalRequests).toBe(0);
     });
 
     it.skip('should perform health check', async () => {
       const result = await service.healthCheck();
-      expect(mockClient.healthCheck).toHaveBeenCalled();
+      expect(mockFetcher.healthCheck).toHaveBeenCalled();
       expect(result).toBe(true);
     });
   });

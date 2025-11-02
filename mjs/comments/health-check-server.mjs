@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaCommentsSDK } from './index.mjs';
 
 const fastify = Fastify({
@@ -61,7 +62,7 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaCommentsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaCommentsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const comments = await sdk.getComments(testFileKey);
 
     return {
@@ -90,7 +91,7 @@ fastify.get('/comments/:fileKey', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaCommentsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaCommentsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const comments = await sdk.getComments(fileKey);
 
     return {

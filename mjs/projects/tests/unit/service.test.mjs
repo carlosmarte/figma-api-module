@@ -10,7 +10,7 @@ import {
 } from '../../src/core/exceptions.mjs';
 
 describe('FigmaProjectsService', () => {
-  let mockClient;
+  let mockFetcher;
   let service;
   let mockLogger;
 
@@ -21,32 +21,32 @@ describe('FigmaProjectsService', () => {
       error: jest.fn()
     };
 
-    mockClient = {
+    mockFetcher = {
       getTeamProjects: jest.fn(),
       getProjectFiles: jest.fn()
     };
 
     service = new FigmaProjectsService({
-      client: mockClient,
+      fetcher: mockFetcher,
       logger: mockLogger
     });
   });
 
   describe('constructor', () => {
-    it('should create service with valid client', () => {
-      expect(service.client).toBe(mockClient);
+    it('should create service with valid fetcher', () => {
+      expect(service.fetcher).toBe(mockFetcher);
       expect(service.logger).toBe(mockLogger);
     });
 
-    it('should throw ValidationError without client', () => {
+    it('should throw Error without fetcher', () => {
       expect(() => {
         new FigmaProjectsService({});
-      }).toThrow(ValidationError);
+      }).toThrow('fetcher parameter is required');
     });
 
     it('should use console as default logger', () => {
       const serviceWithoutLogger = new FigmaProjectsService({
-        client: mockClient
+        fetcher: mockFetcher
       });
 
       expect(serviceWithoutLogger.logger).toBe(console);
@@ -59,7 +59,7 @@ describe('FigmaProjectsService', () => {
       };
 
       const customService = new FigmaProjectsService({
-        client: mockClient,
+        fetcher: mockFetcher,
         logger: mockLogger,
         config: customConfig
       });
@@ -79,7 +79,7 @@ describe('FigmaProjectsService', () => {
     };
 
     beforeEach(() => {
-      mockClient.getTeamProjects.mockResolvedValue(mockTeamResponse);
+      mockFetcher.getTeamProjects.mockResolvedValue(mockTeamResponse);
     });
 
     it('should validate teamId parameter', async () => {
@@ -93,7 +93,7 @@ describe('FigmaProjectsService', () => {
     it('should fetch and enrich team projects', async () => {
       const result = await service.getTeamProjects('team123');
 
-      expect(mockClient.getTeamProjects).toHaveBeenCalledWith('team123');
+      expect(mockFetcher.getTeamProjects).toHaveBeenCalledWith('team123');
       expect(result).toHaveProperty('team');
       expect(result).toHaveProperty('projects');
       expect(result).toHaveProperty('totalCount');
@@ -135,7 +135,7 @@ describe('FigmaProjectsService', () => {
     });
 
     it('should throw error for invalid response structure', async () => {
-      mockClient.getTeamProjects.mockResolvedValue({ invalid: 'response' });
+      mockFetcher.getTeamProjects.mockResolvedValue({ invalid: 'response' });
 
       await expect(service.getTeamProjects('team123'))
         .rejects.toThrow(ValidationError);
@@ -162,7 +162,7 @@ describe('FigmaProjectsService', () => {
     };
 
     beforeEach(() => {
-      mockClient.getProjectFiles.mockResolvedValue(mockFilesResponse);
+      mockFetcher.getProjectFiles.mockResolvedValue(mockFilesResponse);
     });
 
     it('should validate projectId parameter', async () => {
@@ -176,7 +176,7 @@ describe('FigmaProjectsService', () => {
     it('should fetch and enrich project files', async () => {
       const result = await service.getProjectFiles('proj123');
 
-      expect(mockClient.getProjectFiles).toHaveBeenCalledWith('proj123', { branchData: undefined });
+      expect(mockFetcher.getProjectFiles).toHaveBeenCalledWith('proj123', { branchData: undefined });
       expect(result).toHaveProperty('project');
       expect(result).toHaveProperty('files');
       expect(result).toHaveProperty('totalCount');
@@ -212,7 +212,7 @@ describe('FigmaProjectsService', () => {
     it('should pass through branchData option', async () => {
       await service.getProjectFiles('proj123', { branchData: true });
 
-      expect(mockClient.getProjectFiles).toHaveBeenCalledWith('proj123', { branchData: true });
+      expect(mockFetcher.getProjectFiles).toHaveBeenCalledWith('proj123', { branchData: true });
     });
   });
 

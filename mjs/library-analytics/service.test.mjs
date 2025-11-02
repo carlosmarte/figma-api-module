@@ -4,38 +4,32 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import FigmaLibraryAnalyticsService from './service.mjs';
-import { LibraryAnalyticsError } from './client.mjs';
+import { LibraryAnalyticsError } from './errors.mjs';
 
 describe('FigmaLibraryAnalyticsService', () => {
   let service;
-  let mockClient;
+  let mockFetcher;
   const mockFileKey = 'test-file-key';
 
   beforeEach(() => {
-    mockClient = {
-      getAll: jest.fn(),
-      getComponentActions: jest.fn(),
-      getComponentUsages: jest.fn(),
-      getStyleActions: jest.fn(),
-      getStyleUsages: jest.fn(),
-      getVariableActions: jest.fn(),
-      getVariableUsages: jest.fn()
+    mockFetcher = {
+      get: jest.fn()
     };
 
     service = new FigmaLibraryAnalyticsService({
-      client: mockClient
+      fetcher: mockFetcher
     });
   });
 
   describe('Constructor', () => {
-    test('should initialize with client', () => {
-      expect(service.client).toBe(mockClient);
+    test('should initialize with fetcher', () => {
+      expect(service.fetcher).toBe(mockFetcher);
     });
 
-    test('should throw error without client', () => {
+    test('should throw error without fetcher', () => {
       expect(() => {
         new FigmaLibraryAnalyticsService({});
-      }).toThrow(LibraryAnalyticsError);
+      }).toThrow('fetcher parameter is required');
     });
   });
 
@@ -51,9 +45,9 @@ describe('FigmaLibraryAnalyticsService', () => {
         { component_name: 'Input', usage_count: 25 }
       ];
 
-      mockClient.getAll
-        .mockResolvedValueOnce(mockActions)
-        .mockResolvedValueOnce(mockUsages);
+      mockFetcher.get
+        .mockResolvedValueOnce({ data: mockActions, meta: {} })
+        .mockResolvedValueOnce({ data: mockUsages, meta: {} });
 
       const result = await service.getComponentAdoption(mockFileKey, {
         period: 'lastMonth'
@@ -67,9 +61,9 @@ describe('FigmaLibraryAnalyticsService', () => {
     });
 
     test('should handle empty component data', async () => {
-      mockClient.getAll
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockFetcher.get
+        .mockResolvedValueOnce({ data: [], meta: {} })
+        .mockResolvedValueOnce({ data: [], meta: {} });
 
       const result = await service.getComponentAdoption(mockFileKey);
 
@@ -86,7 +80,7 @@ describe('FigmaLibraryAnalyticsService', () => {
         { component_name: 'Card', usage_count: 75 }
       ];
 
-      mockClient.getAll.mockResolvedValueOnce(mockUsages);
+      mockFetcher.get.mockResolvedValueOnce({ data: mockUsages, meta: {} });
 
       const result = await service.getComponentLeaderboard(mockFileKey, {
         limit: 2
@@ -106,7 +100,7 @@ describe('FigmaLibraryAnalyticsService', () => {
         { team_name: 'Engineering Team', action_count: 0 }
       ];
 
-      mockClient.getAll.mockResolvedValueOnce(mockTeamActions);
+      mockFetcher.get.mockResolvedValueOnce({ data: mockTeamActions, meta: {} });
 
       const result = await service.getComponentTeamEngagement(mockFileKey);
 
@@ -129,9 +123,9 @@ describe('FigmaLibraryAnalyticsService', () => {
         { style_name: 'Secondary Color', usage_count: 15 }
       ];
 
-      mockClient.getAll
-        .mockResolvedValueOnce(mockActions)
-        .mockResolvedValueOnce(mockUsages);
+      mockFetcher.get
+        .mockResolvedValueOnce({ data: mockActions, meta: {} })
+        .mockResolvedValueOnce({ data: mockUsages, meta: {} });
 
       const result = await service.getStyleAdoption(mockFileKey);
 
@@ -148,7 +142,7 @@ describe('FigmaLibraryAnalyticsService', () => {
         { style_name: 'Accent Color', usage_count: 60 }
       ];
 
-      mockClient.getAll.mockResolvedValueOnce(mockUsages);
+      mockFetcher.get.mockResolvedValueOnce({ data: mockUsages, meta: {} });
 
       const result = await service.getStyleLeaderboard(mockFileKey, {
         limit: 2
@@ -172,9 +166,9 @@ describe('FigmaLibraryAnalyticsService', () => {
         { variable_name: 'Secondary Token', usage_count: 35 }
       ];
 
-      mockClient.getAll
-        .mockResolvedValueOnce(mockActions)
-        .mockResolvedValueOnce(mockUsages);
+      mockFetcher.get
+        .mockResolvedValueOnce({ data: mockActions, meta: {} })
+        .mockResolvedValueOnce({ data: mockUsages, meta: {} });
 
       const result = await service.getVariableAdoption(mockFileKey);
 
@@ -364,7 +358,7 @@ describe('FigmaLibraryAnalyticsService', () => {
 
   describe('Error Handling', () => {
     test('should handle client errors gracefully', async () => {
-      mockClient.getAll.mockRejectedValueOnce(new Error('Client error'));
+      mockFetcher.get.mockRejectedValueOnce(new Error('Client error'));
 
       await expect(service.getComponentAdoption(mockFileKey)).rejects.toThrow('Client error');
     });
@@ -376,11 +370,11 @@ describe('FigmaLibraryAnalyticsService', () => {
       };
 
       const serviceWithLogger = new FigmaLibraryAnalyticsService({
-        client: mockClient,
+        fetcher: mockFetcher,
         logger: mockLogger
       });
 
-      mockClient.getAll.mockRejectedValueOnce(new Error('Test error'));
+      mockFetcher.get.mockRejectedValueOnce(new Error('Test error'));
 
       await expect(serviceWithLogger.getComponentAdoption(mockFileKey)).rejects.toThrow();
       expect(mockLogger.error).toHaveBeenCalledWith(

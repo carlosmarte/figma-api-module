@@ -14,15 +14,15 @@ import {
 
 describe('FigmaCommentsService - Reactions', () => {
   let service;
-  let mockClient;
+  let mockFetcher;
 
   beforeEach(() => {
-    mockClient = {
+    mockFetcher = {
       request: jest.fn()
     };
     
     service = new FigmaCommentsService({ 
-      client: mockClient,
+      fetcher: mockFetcher,
       logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() }
     });
   });
@@ -36,11 +36,11 @@ describe('FigmaCommentsService - Reactions', () => {
         ]
       };
       
-      mockClient.request.mockResolvedValueOnce(mockReactions);
+      mockFetcher.request.mockResolvedValueOnce(mockReactions);
 
       const result = await service.getCommentReactions('test-file-key', 'comment-id');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockFetcher.request).toHaveBeenCalledWith(
         '/v1/files/test-file-key/comments/comment-id/reactions'
       );
       expect(result).toEqual(mockReactions);
@@ -57,14 +57,14 @@ describe('FigmaCommentsService - Reactions', () => {
     test('should handle 403 error with proper scope message', async () => {
       const error403 = new Error('Forbidden');
       error403.status = 403;
-      mockClient.request.mockRejectedValueOnce(error403);
+      mockFetcher.request.mockRejectedValueOnce(error403);
 
       await expect(service.getCommentReactions('test-file-key', 'comment-id'))
         .rejects.toThrow(AuthorizationError);
     });
 
     test('should handle general errors', async () => {
-      mockClient.request.mockRejectedValueOnce(new Error('Network error'));
+      mockFetcher.request.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(service.getCommentReactions('test-file-key', 'comment-id'))
         .rejects.toThrow(CommentError);
@@ -79,11 +79,11 @@ describe('FigmaCommentsService - Reactions', () => {
         created_at: '2023-01-01T10:00:00Z'
       };
       
-      mockClient.request.mockResolvedValueOnce(mockReaction);
+      mockFetcher.request.mockResolvedValueOnce(mockReaction);
 
       const result = await service.addCommentReaction('test-file-key', 'comment-id', '👍');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockFetcher.request).toHaveBeenCalledWith(
         '/v1/files/test-file-key/comments/comment-id/reactions',
         {
           method: 'POST',
@@ -111,7 +111,7 @@ describe('FigmaCommentsService - Reactions', () => {
     test('should handle 403 error for write permission', async () => {
       const error403 = new Error('Forbidden');
       error403.status = 403;
-      mockClient.request.mockRejectedValueOnce(error403);
+      mockFetcher.request.mockRejectedValueOnce(error403);
 
       await expect(service.addCommentReaction('test-file-key', 'comment-id', '👍'))
         .rejects.toThrow(AuthorizationError);
@@ -122,11 +122,11 @@ describe('FigmaCommentsService - Reactions', () => {
     test('should delete reaction from comment successfully', async () => {
       const mockResult = { success: true };
       
-      mockClient.request.mockResolvedValueOnce(mockResult);
+      mockFetcher.request.mockResolvedValueOnce(mockResult);
 
       const result = await service.deleteCommentReaction('test-file-key', 'comment-id', '👍');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockFetcher.request).toHaveBeenCalledWith(
         '/v1/files/test-file-key/comments/comment-id/reactions',
         {
           method: 'DELETE',
@@ -139,7 +139,7 @@ describe('FigmaCommentsService - Reactions', () => {
     test('should handle 403 error for write permission', async () => {
       const error403 = new Error('Forbidden');
       error403.status = 403;
-      mockClient.request.mockRejectedValueOnce(error403);
+      mockFetcher.request.mockRejectedValueOnce(error403);
 
       await expect(service.deleteCommentReaction('test-file-key', 'comment-id', '👍'))
         .rejects.toThrow(AuthorizationError);
@@ -152,7 +152,7 @@ describe('FigmaCommentsService - Reactions', () => {
       const mockUserInfo = { id: 'current-user' };
       const mockNewReaction = { emoji: '👍', user: { id: 'current-user' } };
       
-      mockClient.request
+      mockFetcher.request
         .mockResolvedValueOnce(mockReactions) // getCommentReactions
         .mockResolvedValueOnce(mockUserInfo) // getCurrentUserId
         .mockResolvedValueOnce(mockNewReaction); // addCommentReaction
@@ -171,7 +171,7 @@ describe('FigmaCommentsService - Reactions', () => {
       const mockUserInfo = { id: 'current-user' };
       const mockDeleteResult = { success: true };
       
-      mockClient.request
+      mockFetcher.request
         .mockResolvedValueOnce(mockReactions) // getCommentReactions
         .mockResolvedValueOnce(mockUserInfo) // getCurrentUserId
         .mockResolvedValueOnce(mockDeleteResult); // deleteCommentReaction
@@ -204,7 +204,7 @@ describe('FigmaCommentsService - Reactions', () => {
         ]
       };
       
-      mockClient.request
+      mockFetcher.request
         .mockResolvedValueOnce({ comments: mockComments }) // getFileComments
         .mockResolvedValueOnce(mockReactions1) // getCommentReactions for comment1
         .mockResolvedValueOnce(mockReactions2); // getCommentReactions for comment2
@@ -224,7 +224,7 @@ describe('FigmaCommentsService - Reactions', () => {
         { id: 'comment2', message: 'Test 2' }
       ];
       
-      mockClient.request
+      mockFetcher.request
         .mockResolvedValueOnce({ comments: mockComments }) // getFileComments
         .mockRejectedValueOnce(new Error('Failed to get reactions')) // comment1 fails
         .mockResolvedValueOnce({ reactions: [] }); // comment2 succeeds
@@ -240,8 +240,13 @@ describe('FigmaCommentsService - Reactions', () => {
 describe('FigmaCommentsSDK - Reactions', () => {
   let sdk;
   let mockService;
+  let mockFetcher;
 
   beforeEach(() => {
+    mockFetcher = {
+      request: jest.fn()
+    };
+
     mockService = {
       getCommentReactions: jest.fn(),
       addCommentReaction: jest.fn(),
@@ -250,8 +255,8 @@ describe('FigmaCommentsSDK - Reactions', () => {
       getFileReactionSummary: jest.fn()
     };
 
-    // Create SDK with mocked service
-    sdk = new FigmaCommentsSDK({ apiToken: 'test-token' });
+    // Create SDK with mocked fetcher
+    sdk = new FigmaCommentsSDK({ fetcher: mockFetcher });
     sdk.service = mockService;
   });
 
@@ -386,11 +391,11 @@ describe('FigmaCommentsSDK - Reactions', () => {
 
 describe('Reaction Validation', () => {
   let service;
-  let mockClient;
+  let mockFetcher;
 
   beforeEach(() => {
-    mockClient = { request: jest.fn() };
-    service = new FigmaCommentsService({ client: mockClient });
+    mockFetcher = { request: jest.fn() };
+    service = new FigmaCommentsService({ fetcher: mockFetcher });
   });
 
   describe('_validateReactionEmoji', () => {
@@ -412,7 +417,7 @@ describe('Reaction Validation', () => {
     test('should provide clear read scope error message', async () => {
       const error403 = new Error('Forbidden');
       error403.status = 403;
-      mockClient.request.mockRejectedValueOnce(error403);
+      mockFetcher.request.mockRejectedValueOnce(error403);
 
       try {
         await service.getCommentReactions('file-key', 'comment-id');
@@ -427,7 +432,7 @@ describe('Reaction Validation', () => {
     test('should provide clear write scope error message', async () => {
       const error403 = new Error('Forbidden');
       error403.status = 403;
-      mockClient.request.mockRejectedValueOnce(error403);
+      mockFetcher.request.mockRejectedValueOnce(error403);
 
       try {
         await service.addCommentReaction('file-key', 'comment-id', '👍');

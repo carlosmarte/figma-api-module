@@ -8,26 +8,26 @@ import { ValidationError, CommentError, NotFoundError } from '../../src/core/exc
 
 describe('FigmaCommentsService', () => {
   let service;
-  let mockClient;
+  let mockFetcher;
 
   beforeEach(() => {
-    mockClient = {
+    mockFetcher = {
       request: jest.fn()
     };
-    
-    service = new FigmaCommentsService({ 
-      client: mockClient,
+
+    service = new FigmaCommentsService({
+      fetcher: mockFetcher,
       logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() }
     });
   });
 
   describe('Constructor', () => {
     test('should require client or apiToken', () => {
-      expect(() => new FigmaCommentsService()).toThrow(ValidationError);
+      expect(() => new FigmaCommentsService()).toThrow('fetcher parameter is required');
     });
 
     test('should initialize with client', () => {
-      expect(service.client).toBe(mockClient);
+      expect(service.fetcher).toBe(mockFetcher);
     });
   });
 
@@ -38,22 +38,22 @@ describe('FigmaCommentsService', () => {
         { id: '2', message: 'Test comment 2' }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.getFileComments('test-file-key');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
+      expect(mockFetcher.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
         params: {}
       });
       expect(result).toEqual(mockComments);
     });
 
     test('should request markdown format when specified', async () => {
-      mockClient.request.mockResolvedValueOnce({ comments: [] });
+      mockFetcher.request.mockResolvedValueOnce({ comments: [] });
 
       await service.getFileComments('test-file-key', { asMarkdown: true });
 
-      expect(mockClient.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
+      expect(mockFetcher.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
         params: { as_md: true }
       });
     });
@@ -67,13 +67,13 @@ describe('FigmaCommentsService', () => {
   describe('addComment', () => {
     test('should add comment successfully', async () => {
       const mockComment = { id: 'new-comment', message: 'Test comment' };
-      mockClient.request.mockResolvedValueOnce(mockComment);
+      mockFetcher.request.mockResolvedValueOnce(mockComment);
 
       const result = await service.addComment('test-file-key', {
         message: 'Test comment'
       });
 
-      expect(mockClient.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
+      expect(mockFetcher.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
         method: 'POST',
         body: { message: 'Test comment' }
       });
@@ -82,14 +82,14 @@ describe('FigmaCommentsService', () => {
 
     test('should add comment with position', async () => {
       const mockComment = { id: 'new-comment', message: 'Test comment' };
-      mockClient.request.mockResolvedValueOnce(mockComment);
+      mockFetcher.request.mockResolvedValueOnce(mockComment);
 
       await service.addComment('test-file-key', {
         message: 'Test comment',
         position: { x: 100, y: 200 }
       });
 
-      expect(mockClient.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
+      expect(mockFetcher.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
         method: 'POST',
         body: {
           message: 'Test comment',
@@ -100,14 +100,14 @@ describe('FigmaCommentsService', () => {
 
     test('should add reply comment', async () => {
       const mockComment = { id: 'reply-comment', message: 'Reply' };
-      mockClient.request.mockResolvedValueOnce(mockComment);
+      mockFetcher.request.mockResolvedValueOnce(mockComment);
 
       await service.addComment('test-file-key', {
         message: 'Reply',
         parentId: 'parent-comment-id'
       });
 
-      expect(mockClient.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
+      expect(mockFetcher.request).toHaveBeenCalledWith('/v1/files/test-file-key/comments', {
         method: 'POST',
         body: {
           message: 'Reply',
@@ -138,11 +138,11 @@ describe('FigmaCommentsService', () => {
   describe('deleteComment', () => {
     test('should delete comment successfully', async () => {
       const mockResult = { status: 200, error: false };
-      mockClient.request.mockResolvedValueOnce(mockResult);
+      mockFetcher.request.mockResolvedValueOnce(mockResult);
 
       const result = await service.deleteComment('test-file-key', 'comment-id');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockFetcher.request).toHaveBeenCalledWith(
         '/v1/files/test-file-key/comments/comment-id',
         { method: 'DELETE' }
       );
@@ -167,7 +167,7 @@ describe('FigmaCommentsService', () => {
         { id: 'other', message: 'Other comment', parent_id: null }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.getCommentThread('test-file-key', 'root');
 
@@ -178,7 +178,7 @@ describe('FigmaCommentsService', () => {
     });
 
     test('should throw error for non-existent comment', async () => {
-      mockClient.request.mockResolvedValueOnce({ comments: [] });
+      mockFetcher.request.mockResolvedValueOnce({ comments: [] });
 
       await expect(service.getCommentThread('test-file-key', 'non-existent'))
         .rejects.toThrow(NotFoundError);
@@ -193,7 +193,7 @@ describe('FigmaCommentsService', () => {
         { id: '3', message: 'Testing the search', user: { handle: 'user3' } }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.searchComments('test-file-key', 'test');
 
@@ -208,7 +208,7 @@ describe('FigmaCommentsService', () => {
         { id: '2', message: 'Another comment', user: { handle: 'user2' } }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.searchComments('test-file-key', 'test', { includeUsers: true });
 
@@ -225,7 +225,7 @@ describe('FigmaCommentsService', () => {
         { id: '3', message: 'Comment 3', user: { id: 'user1' }, created_at: '2023-01-01T12:00:00Z' }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.getCommentsByUser('test-file-key', 'user1');
 
@@ -243,7 +243,7 @@ describe('FigmaCommentsService', () => {
         { id: '3', message: 'Unresolved 2', resolved_at: null }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.getUnresolvedComments('test-file-key');
 
@@ -256,7 +256,7 @@ describe('FigmaCommentsService', () => {
   describe('batchDeleteComments', () => {
     test('should delete multiple comments successfully', async () => {
       const commentIds = ['comment1', 'comment2', 'comment3'];
-      mockClient.request
+      mockFetcher.request
         .mockResolvedValueOnce({ status: 200 })
         .mockResolvedValueOnce({ status: 200 })
         .mockRejectedValueOnce(new Error('Delete failed'));
@@ -308,7 +308,7 @@ describe('FigmaCommentsService', () => {
         }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const stats = await service.getCommentStatistics('test-file-key');
 
@@ -337,7 +337,7 @@ describe('FigmaCommentsService', () => {
     ];
 
     beforeEach(() => {
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
     });
 
     test('should export as JSON', async () => {
@@ -373,7 +373,7 @@ describe('FigmaCommentsService', () => {
         { message: 'Comment 3' }
       ];
       
-      mockClient.request
+      mockFetcher.request
         .mockResolvedValueOnce({ id: 'comment1' })
         .mockResolvedValueOnce({ id: 'comment2' })
         .mockRejectedValueOnce(new Error('Add failed'));
@@ -403,7 +403,7 @@ describe('FigmaCommentsService', () => {
         { id: '3', message: 'Very recent', created_at: now.toISOString() }
       ];
       
-      mockClient.request.mockResolvedValueOnce({ comments: mockComments });
+      mockFetcher.request.mockResolvedValueOnce({ comments: mockComments });
 
       const result = await service.getCommentHistory('test-file-key', 7);
 

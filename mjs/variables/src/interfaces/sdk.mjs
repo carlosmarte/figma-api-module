@@ -1,22 +1,30 @@
 /**
  * SDK facade for figma-variables-sdk
- * Provides ergonomic API over core client and service layers
+ * Provides ergonomic API over core service layer
  */
 
-import { FigmaVariablesClient } from '../core/client.mjs';
 import { FigmaVariablesService } from '../core/service.mjs';
-import { ValidationError } from '../core/exceptions.mjs';
 
+/**
+ * High-level SDK for Figma Variables API
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaVariablesSDK } from 'figma-variables-sdk';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaVariablesSDK({ fetcher });
+ */
 export class FigmaVariablesSDK {
-  constructor(config = {}) {
-    if (!config.accessToken) {
-      throw new ValidationError('Figma access token is required', 'accessToken', config.accessToken);
-    }
-
-    this.client = new FigmaVariablesClient(config);
-    this.service = new FigmaVariablesService({ 
-      client: this.client,
-      logger: config.logger || console 
+  /**
+   * @param {object} config - SDK configuration
+   * @param {object} config.fetcher - FigmaApiClient instance (required)
+   * @param {object} [config.logger=console] - Logger instance
+   */
+  constructor({ fetcher, logger = console } = {}) {
+    this.service = new FigmaVariablesService({
+      fetcher,
+      logger
     });
   }
 
@@ -296,7 +304,6 @@ export class FigmaVariablesSDK {
    */
   getStats() {
     return {
-      client: this.client.getStats(),
       service: this.service.getStats()
     };
   }

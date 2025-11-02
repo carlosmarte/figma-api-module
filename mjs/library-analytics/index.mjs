@@ -3,23 +3,19 @@
  * Exports all public interfaces for the library
  */
 
-// Core exports
-export { 
-  FigmaLibraryAnalyticsClient,
+// Error exports
+export {
   LibraryAnalyticsError,
   LibraryAnalyticsAuthError,
   LibraryAnalyticsValidationError,
   LibraryAnalyticsRateLimitError
-} from './client.mjs';
+} from './errors.mjs';
 
+// Service export
 export { FigmaLibraryAnalyticsService } from './service.mjs';
 
-// Interface exports
-export { FigmaLibraryAnalyticsSDK } from './sdk.mjs';
-export { default as FigmaLibraryAnalyticsSDK } from './sdk.mjs';
+// SDK exports
+export { FigmaLibraryAnalyticsSDK, default } from './sdk.mjs';
 
 // Version info
 export const VERSION = '1.0.0';
-
-// Re-export commonly used items for convenience
-export { default } from './sdk.mjs';

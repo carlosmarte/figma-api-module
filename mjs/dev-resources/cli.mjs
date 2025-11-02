@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { readFileSync } from 'fs';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaDevResourcesSDK } from './sdk.mjs';
 
 const program = new Command();
@@ -17,27 +18,32 @@ program
   .name('figma-dev-resources')
   .description('CLI for Figma Dev Resources API')
   .version('1.0.0')
-  .option('-t, --token <token>', 'Figma access token (or set FIGMA_ACCESS_TOKEN env var)')
+  .option('-t, --token <token>', 'Figma access token (or set FIGMA_TOKEN env var)')
   .option('-b, --base-url <url>', 'API base URL', 'https://api.figma.com')
   .option('-v, --verbose', 'Verbose output')
   .option('--timeout <ms>', 'Request timeout in milliseconds', '30000');
 
 // Helper to get SDK instance
 function getSDK(options) {
-  const accessToken = options.token || process.env.FIGMA_ACCESS_TOKEN;
+  const apiToken = options.token || process.env.FIGMA_TOKEN;
 
-  if (!accessToken) {
+  if (!apiToken) {
     console.error(chalk.red('Error: Figma access token is required'));
-    console.error('Set via --token flag or FIGMA_ACCESS_TOKEN environment variable');
+    console.error('Set via --token flag or FIGMA_TOKEN environment variable');
     console.error('Get your token at: https://www.figma.com/developers/api#access-tokens');
     process.exit(1);
   }
 
-  return new FigmaDevResourcesSDK({
-    accessToken,
+  const fetcher = new FigmaApiClient({
+    apiToken,
     baseUrl: options.baseUrl,
     timeout: parseInt(options.timeout),
-    logger: options.verbose ? console : { debug: () => {}, error: console.error }
+    logger: options.verbose ? console : undefined
+  });
+
+  return new FigmaDevResourcesSDK({
+    fetcher,
+    logger: options.verbose ? console : undefined
   });
 }
 
@@ -152,7 +158,8 @@ program
         };
       }
 
-      const results = await sdk.client.batchCreateDevResources(resourcesData, progressCallback);
+      // Note: batch operations require multiple file keys, use createMultiFileDevResources
+      const results = await sdk.createMultiFileDevResources(resourcesData, progressCallback);
       
       spinner.succeed(`Created ${results.links_created.length} dev resources`);
       

@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import FigmaWebhooksSDK from './index.mjs';
 
 const fastify = Fastify({
@@ -67,7 +68,8 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
     const webhooks = await sdk.listWebhooks(testTeamId);
 
     return {
@@ -96,7 +98,8 @@ fastify.get('/webhooks/team/:teamId', async (request, reply) => {
 
   try {
     const { teamId } = request.params;
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
     const webhooks = await sdk.listWebhooks(teamId);
 
     return {
@@ -132,7 +135,8 @@ fastify.post('/webhooks', async (request, reply) => {
       });
     }
 
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
     const webhook = await sdk.createWebhook(teamId, eventType, endpoint, {
       passcode,
       description
@@ -164,7 +168,8 @@ fastify.put('/webhooks/:webhookId', async (request, reply) => {
     const { webhookId } = request.params;
     const updates = request.body;
 
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
     const webhook = await sdk.updateWebhook(webhookId, updates);
 
     return {
@@ -193,7 +198,8 @@ fastify.delete('/webhooks/:webhookId', async (request, reply) => {
   try {
     const { webhookId } = request.params;
 
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
     await sdk.deleteWebhook(webhookId);
 
     return {
@@ -222,7 +228,8 @@ fastify.get('/webhooks/:webhookId/requests', async (request, reply) => {
   try {
     const { webhookId } = request.params;
 
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
     const requests = await sdk.getWebhookRequests(webhookId);
 
     return {
@@ -251,8 +258,9 @@ fastify.post('/webhooks/verify', async (request, reply) => {
       });
     }
 
-    const sdk = new FigmaWebhooksSDK({ token: FIGMA_TOKEN || 'dummy' });
-    const isValid = sdk.verifyWebhookSignature(payload, signature, passcode);
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN || 'dummy' });
+    const sdk = new FigmaWebhooksSDK({ fetcher });
+    const isValid = sdk.verifySignature(payload, signature, passcode);
 
     return {
       success: true,

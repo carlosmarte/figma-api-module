@@ -4,7 +4,6 @@
  */
 
 // Core exports
-export { FigmaComponentsClient } from './src/core/client.mjs';
 export { FigmaComponentsService } from './src/core/service.mjs';
 
 // Interface exports

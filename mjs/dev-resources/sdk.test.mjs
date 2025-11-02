@@ -4,25 +4,30 @@
 
 import { jest } from '@jest/globals';
 
-// Mock client and undici modules
-const mockClient = {
+// Create shared mock methods object that will be accessible throughout tests
+const mockMethods = {
   getDevResources: jest.fn(),
   createDevResources: jest.fn(),
   updateDevResources: jest.fn(),
-  deleteDevResource: jest.fn(),
-  batchCreateDevResources: jest.fn()
+  deleteDevResource: jest.fn()
 };
 
 const mockFetch = jest.fn();
 const mockProxyAgent = jest.fn();
 
-jest.unstable_mockModule('./client.mjs', () => ({
-  default: jest.fn(() => mockClient),
-  FigmaDevResourcesClient: jest.fn(() => mockClient),
-  FigmaApiError: class extends Error {},
-  FigmaAuthError: class extends Error {},
-  FigmaValidationError: class extends Error {},
-  FigmaRateLimitError: class extends Error {}
+// Create a mock service class constructor
+class MockFigmaDevResourcesService {
+  constructor() {
+    this.getDevResources = mockMethods.getDevResources;
+    this.createDevResources = mockMethods.createDevResources;
+    this.updateDevResources = mockMethods.updateDevResources;
+    this.deleteDevResource = mockMethods.deleteDevResource;
+  }
+}
+
+jest.unstable_mockModule('./service.mjs', () => ({
+  FigmaDevResourcesService: MockFigmaDevResourcesService,
+  default: MockFigmaDevResourcesService
 }));
 
 jest.unstable_mockModule('undici', () => ({
@@ -35,15 +40,17 @@ const FigmaDevResourcesSDK = (await import('./sdk.mjs')).default;
 
 describe('FigmaDevResourcesSDK', () => {
   let sdk;
+  const mockFetcher = {
+    request: jest.fn()
+  };
   const mockConfig = {
-    accessToken: 'test-token',
-    baseUrl: 'https://api.figma.com'
+    fetcher: mockFetcher
   };
 
   beforeEach(() => {
     // Clear all mocks
     jest.clearAllMocks();
-    
+
     sdk = new FigmaDevResourcesSDK(mockConfig);
   });
 
@@ -52,19 +59,12 @@ describe('FigmaDevResourcesSDK', () => {
   });
 
   describe('constructor', () => {
-    it('should create SDK with client instance', () => {
-      expect(sdk.client).toBe(mockClient);
+    it('should create SDK with service instance', () => {
+      expect(sdk.service).toBeInstanceOf(MockFigmaDevResourcesService);
     });
 
-    it('should initialize proxy agent if configured', () => {
-      const configWithProxy = {
-        ...mockConfig,
-        proxyUrl: 'http://proxy.example.com:8080',
-        proxyToken: 'proxy-token'
-      };
-      
-      const sdkWithProxy = new FigmaDevResourcesSDK(configWithProxy);
-      expect(sdkWithProxy.proxyAgent).toBeDefined();
+    it('should require fetcher parameter', () => {
+      expect(() => new FigmaDevResourcesSDK({})).toThrow('fetcher parameter is required');
     });
   });
 
@@ -81,30 +81,30 @@ describe('FigmaDevResourcesSDK', () => {
     ];
 
     it('should get dev resources for a file', async () => {
-      mockClient.getDevResources.mockResolvedValue({
+      mockMethods.getDevResources.mockResolvedValue({
         dev_resources: mockDevResources
       });
 
       const result = await sdk.getFileDevResources(mockFileKey);
 
-      expect(mockClient.getDevResources).toHaveBeenCalledWith(mockFileKey, {});
+      expect(mockMethods.getDevResources).toHaveBeenCalledWith(mockFileKey, {});
       expect(result).toEqual(mockDevResources);
     });
 
     it('should get dev resources with node ID filter', async () => {
       const nodeIds = ['node-1', 'node-2'];
-      mockClient.getDevResources.mockResolvedValue({
+      mockMethods.getDevResources.mockResolvedValue({
         dev_resources: mockDevResources
       });
 
       const result = await sdk.getFileDevResources(mockFileKey, nodeIds);
 
-      expect(mockClient.getDevResources).toHaveBeenCalledWith(mockFileKey, { nodeIds });
+      expect(mockMethods.getDevResources).toHaveBeenCalledWith(mockFileKey, { nodeIds });
       expect(result).toEqual(mockDevResources);
     });
 
     it('should return empty array if no dev_resources in response', async () => {
-      mockClient.getDevResources.mockResolvedValue({});
+      mockMethods.getDevResources.mockResolvedValue({});
 
       const result = await sdk.getFileDevResources(mockFileKey);
 
@@ -141,14 +141,14 @@ describe('FigmaDevResourcesSDK', () => {
     };
 
     it('should create a single dev resource successfully', async () => {
-      mockClient.createDevResources.mockResolvedValue({
+      mockMethods.createDevResources.mockResolvedValue({
         links_created: [mockCreatedResource],
         errors: []
       });
 
       const result = await sdk.createDevResource(mockFileKey, mockNodeId, mockName, mockUrl);
 
-      expect(mockClient.createDevResources).toHaveBeenCalledWith([{
+      expect(mockMethods.createDevResources).toHaveBeenCalledWith([{
         file_key: mockFileKey,
         node_id: mockNodeId,
         name: mockName,
@@ -158,7 +158,7 @@ describe('FigmaDevResourcesSDK', () => {
     });
 
     it('should throw error if creation fails', async () => {
-      mockClient.createDevResources.mockResolvedValue({
+      mockMethods.createDevResources.mockResolvedValue({
         links_created: [],
         errors: [{ error: 'Creation failed' }]
       });
@@ -169,7 +169,7 @@ describe('FigmaDevResourcesSDK', () => {
     });
 
     it('should throw error for unknown creation failure', async () => {
-      mockClient.createDevResources.mockResolvedValue({
+      mockMethods.createDevResources.mockResolvedValue({
         links_created: [],
         errors: []
       });
@@ -189,11 +189,11 @@ describe('FigmaDevResourcesSDK', () => {
       ];
       const mockResponse = { links_created: [], errors: [] };
 
-      mockClient.createDevResources.mockResolvedValue(mockResponse);
+      mockMethods.createDevResources.mockResolvedValue(mockResponse);
 
       const result = await sdk.createFileDevResources(mockFileKey, resources);
 
-      expect(mockClient.createDevResources).toHaveBeenCalledWith([
+      expect(mockMethods.createDevResources).toHaveBeenCalledWith([
         { file_key: mockFileKey, node_id: 'node-1', name: 'Resource 1', url: 'https://example1.com' },
         { file_key: mockFileKey, node_id: 'node-2', name: 'Resource 2', url: 'https://example2.com' }
       ]);
@@ -209,11 +209,11 @@ describe('FigmaDevResourcesSDK', () => {
       ];
       const mockResponse = { links_created: [], errors: [] };
 
-      mockClient.createDevResources.mockResolvedValue(mockResponse);
+      mockMethods.createDevResources.mockResolvedValue(mockResponse);
 
       const result = await sdk.createMultiFileDevResources(resources);
 
-      expect(mockClient.createDevResources).toHaveBeenCalledWith([
+      expect(mockMethods.createDevResources).toHaveBeenCalledWith([
         { file_key: 'file-1', node_id: 'node-1', name: 'Resource 1', url: 'https://example1.com' },
         { file_key: 'file-2', node_id: 'node-2', name: 'Resource 2', url: 'https://example2.com' }
       ]);
@@ -227,14 +227,14 @@ describe('FigmaDevResourcesSDK', () => {
     const mockUpdatedResource = { id: mockResourceId, ...mockUpdates };
 
     it('should update a single dev resource successfully', async () => {
-      mockClient.updateDevResources.mockResolvedValue({
+      mockMethods.updateDevResources.mockResolvedValue({
         links_updated: [mockUpdatedResource],
         errors: []
       });
 
       const result = await sdk.updateDevResource(mockResourceId, mockUpdates);
 
-      expect(mockClient.updateDevResources).toHaveBeenCalledWith([{
+      expect(mockMethods.updateDevResources).toHaveBeenCalledWith([{
         id: mockResourceId,
         ...mockUpdates
       }]);
@@ -242,7 +242,7 @@ describe('FigmaDevResourcesSDK', () => {
     });
 
     it('should throw error if update fails', async () => {
-      mockClient.updateDevResources.mockResolvedValue({
+      mockMethods.updateDevResources.mockResolvedValue({
         links_updated: [],
         errors: [{ error: 'Update failed' }]
       });
@@ -253,7 +253,7 @@ describe('FigmaDevResourcesSDK', () => {
     });
 
     it('should throw error for unknown update failure', async () => {
-      mockClient.updateDevResources.mockResolvedValue({
+      mockMethods.updateDevResources.mockResolvedValue({
         links_updated: [],
         errors: []
       });
@@ -272,11 +272,11 @@ describe('FigmaDevResourcesSDK', () => {
       ];
       const mockResponse = { links_updated: [], errors: [] };
 
-      mockClient.updateDevResources.mockResolvedValue(mockResponse);
+      mockMethods.updateDevResources.mockResolvedValue(mockResponse);
 
       const result = await sdk.updateMultipleDevResources(updates);
 
-      expect(mockClient.updateDevResources).toHaveBeenCalledWith(updates);
+      expect(mockMethods.updateDevResources).toHaveBeenCalledWith(updates);
       expect(result).toBe(mockResponse);
     });
   });
@@ -286,11 +286,11 @@ describe('FigmaDevResourcesSDK', () => {
       const fileKey = 'test-file';
       const resourceId = 'resource-1';
 
-      mockClient.deleteDevResource.mockResolvedValue({});
+      mockMethods.deleteDevResource.mockResolvedValue({});
 
       await sdk.deleteDevResource(fileKey, resourceId);
 
-      expect(mockClient.deleteDevResource).toHaveBeenCalledWith(fileKey, resourceId);
+      expect(mockMethods.deleteDevResource).toHaveBeenCalledWith(fileKey, resourceId);
     });
   });
 
@@ -301,11 +301,11 @@ describe('FigmaDevResourcesSDK', () => {
         { fileKey: 'file-2', id: 'resource-2' }
       ];
 
-      mockClient.deleteDevResource.mockResolvedValue({});
+      mockMethods.deleteDevResource.mockResolvedValue({});
 
       const result = await sdk.deleteMultipleDevResources(resources);
 
-      expect(mockClient.deleteDevResource).toHaveBeenCalledTimes(2);
+      expect(mockMethods.deleteDevResource).toHaveBeenCalledTimes(2);
       expect(result).toEqual([
         { success: true, fileKey: 'file-1', id: 'resource-1' },
         { success: true, fileKey: 'file-2', id: 'resource-2' }
@@ -318,7 +318,7 @@ describe('FigmaDevResourcesSDK', () => {
         { fileKey: 'file-2', id: 'resource-2' }
       ];
 
-      mockClient.deleteDevResource
+      mockMethods.deleteDevResource
         .mockResolvedValueOnce({})
         .mockRejectedValueOnce(new Error('Delete failed'));
 
@@ -353,26 +353,26 @@ describe('FigmaDevResourcesSDK', () => {
         { nodeId: 'node-4', name: 'New Resource', url: 'https://new.com' } // Create
       ];
 
-      mockClient.createDevResources.mockResolvedValue({
+      mockMethods.createDevResources.mockResolvedValue({
         links_created: [{ id: 'new-1', name: 'New Resource', url: 'https://new.com' }],
         errors: []
       });
 
-      mockClient.updateDevResources.mockResolvedValue({
+      mockMethods.updateDevResources.mockResolvedValue({
         links_updated: [{ id: 'existing-1', name: 'Updated 1', url: 'https://existing1.com' }],
         errors: []
       });
 
       const result = await sdk.syncFileDevResources(mockFileKey, targetResources);
 
-      expect(mockClient.createDevResources).toHaveBeenCalledWith([{
+      expect(mockMethods.createDevResources).toHaveBeenCalledWith([{
         file_key: mockFileKey,
         node_id: 'node-4',
         name: 'New Resource',
         url: 'https://new.com'
       }]);
 
-      expect(mockClient.updateDevResources).toHaveBeenCalledWith([{
+      expect(mockMethods.updateDevResources).toHaveBeenCalledWith([{
         id: 'existing-1',
         name: 'Updated 1',
         url: 'https://existing1.com'
@@ -395,7 +395,7 @@ describe('FigmaDevResourcesSDK', () => {
         { nodeId: 'node-4', name: 'New Resource', url: 'https://new.com' }
       ];
 
-      mockClient.createDevResources.mockRejectedValue(new Error('Create failed'));
+      mockMethods.createDevResources.mockRejectedValue(new Error('Create failed'));
 
       const result = await sdk.syncFileDevResources(mockFileKey, targetResources);
 
@@ -508,62 +508,38 @@ describe('FigmaDevResourcesSDK', () => {
 
   describe('validateDevResourceUrls', () => {
     const mockFileKey = 'test-file';
-    const mockResources = [
-      { id: '1', name: 'Valid Resource', url: 'https://example.com' },
-      { id: '2', name: 'Invalid Resource', url: 'https://invalid.com' },
-      { id: '3', name: 'Error Resource', url: 'https://error.com' }
-    ];
 
-    beforeEach(() => {
+    it('should validate URL formats and return invalid ones', async () => {
+      const mockResources = [
+        { id: '1', name: 'Valid Resource', url: 'https://example.com' },
+        { id: '2', name: 'Invalid Resource', url: 'not-a-valid-url' },
+        { id: '3', name: 'Another Valid', url: 'https://test.com/path' }
+      ];
+
       sdk.getFileDevResources = jest.fn().mockResolvedValue(mockResources);
-    });
-
-    it('should validate URLs and return invalid ones', async () => {
-      const { fetch } = await import('undici');
-      
-      fetch
-        .mockResolvedValueOnce({ ok: true }) // Valid URL
-        .mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found' }) // Invalid URL
-        .mockRejectedValueOnce(new Error('Network error')); // Error URL
 
       const result = await sdk.validateDevResourceUrls(mockFileKey);
 
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         id: '2',
         name: 'Invalid Resource',
-        error: 'HTTP 404: Not Found'
+        url: 'not-a-valid-url'
       });
-      expect(result[1]).toMatchObject({
-        id: '3',
-        name: 'Error Resource',
-        error: 'Network error'
-      });
+      expect(result[0].error).toContain('Invalid URL format');
     });
 
-    it('should use proxy agent if configured', async () => {
-      const configWithProxy = {
-        ...mockConfig,
-        proxyUrl: 'http://proxy.example.com:8080'
-      };
-      
-      const sdkWithProxy = new FigmaDevResourcesSDK(configWithProxy);
-      sdkWithProxy.getFileDevResources = jest.fn().mockResolvedValue([
-        { id: '1', name: 'Resource', url: 'https://example.com' }
-      ]);
+    it('should return empty array when all URLs are valid', async () => {
+      const mockResources = [
+        { id: '1', name: 'Valid Resource 1', url: 'https://example.com' },
+        { id: '2', name: 'Valid Resource 2', url: 'https://test.com' }
+      ];
 
-      const { fetch } = await import('undici');
-      fetch.mockResolvedValue({ ok: true });
+      sdk.getFileDevResources = jest.fn().mockResolvedValue(mockResources);
 
-      await sdkWithProxy.validateDevResourceUrls(mockFileKey);
+      const result = await sdk.validateDevResourceUrls(mockFileKey);
 
-      expect(fetch).toHaveBeenCalledWith(
-        'https://example.com',
-        expect.objectContaining({
-          method: 'HEAD',
-          dispatcher: expect.any(Object)
-        })
-      );
+      expect(result).toHaveLength(0);
     });
   });
 });

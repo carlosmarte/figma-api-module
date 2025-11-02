@@ -4,7 +4,6 @@
  * Provides high-level methods that compose HTTP client operations
  */
 
-import FigmaFilesClient from './client.mjs';
 import { ValidationError, NodeNotFoundError } from './exceptions.mjs';
 
 /**
@@ -14,16 +13,14 @@ import { ValidationError, NodeNotFoundError } from './exceptions.mjs';
 export class FigmaFilesService {
   /**
    * @param {Object} options - Service configuration
-   * @param {string} options.apiToken - Figma personal access token
-   * @param {Object} [options.clientConfig={}] - HTTP client configuration
+   * @param {Object} options.fetcher - FigmaApiClient instance (required)
    * @param {Object} [options.logger=console] - Logger instance
    */
-  constructor({ apiToken, clientConfig = {}, logger = console } = {}) {
-    this.client = new FigmaFilesClient({
-      apiToken,
-      logger,
-      ...clientConfig
-    });
+  constructor({ fetcher, logger = console } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
+    }
+    this.fetcher = fetcher;
     this.logger = logger;
   }
 
@@ -132,7 +129,7 @@ export class FigmaFilesService {
 
     this.logger.debug(`Getting file: ${fileKey}`, params);
 
-    return this.client.get(`/v1/files/${fileKey}`, params);
+    return this.fetcher.get(`/v1/files/${fileKey}`, params);
   }
 
   /**
@@ -163,7 +160,7 @@ export class FigmaFilesService {
 
     this.logger.debug(`Getting file nodes: ${fileKey}`, params);
 
-    const response = await this.client.get(`/v1/files/${fileKey}/nodes`, params);
+    const response = await this.fetcher.get(`/v1/files/${fileKey}/nodes`, params);
 
     // Check for null nodes in response (indicates nodes don't exist)
     if (response.nodes) {
@@ -219,7 +216,7 @@ export class FigmaFilesService {
 
     this.logger.debug(`Rendering images for file: ${fileKey}`, params);
 
-    const response = await this.client.get(`/v1/images/${fileKey}`, params);
+    const response = await this.fetcher.get(`/v1/images/${fileKey}`, params);
 
     // Check for null images in response (indicates rendering failed)
     if (response.images) {
@@ -247,7 +244,7 @@ export class FigmaFilesService {
 
     this.logger.debug(`Getting image fills for file: ${fileKey}`);
 
-    return this.client.get(`/v1/files/${fileKey}/images`);
+    return this.fetcher.get(`/v1/files/${fileKey}/images`);
   }
 
   /**
@@ -262,7 +259,7 @@ export class FigmaFilesService {
 
     this.logger.debug(`Getting metadata for file: ${fileKey}`);
 
-    return this.client.get(`/v1/files/${fileKey}/meta`);
+    return this.fetcher.get(`/v1/files/${fileKey}/meta`);
   }
 
   /**
@@ -293,7 +290,7 @@ export class FigmaFilesService {
 
     this.logger.debug(`Getting versions for file: ${fileKey}`, params);
 
-    return this.client.get(`/v1/files/${fileKey}/versions`, params);
+    return this.fetcher.get(`/v1/files/${fileKey}/versions`, params);
   }
 
   /**
@@ -343,7 +340,7 @@ export class FigmaFilesService {
    * @returns {Object} HTTP client statistics
    */
   getStats() {
-    return this.client.getStats();
+    return this.fetcher.getStats();
   }
 
   /**
@@ -351,7 +348,7 @@ export class FigmaFilesService {
    * @returns {Promise<boolean>} Whether service is healthy
    */
   async healthCheck() {
-    return this.client.healthCheck();
+    return this.fetcher.healthCheck();
   }
 }
 

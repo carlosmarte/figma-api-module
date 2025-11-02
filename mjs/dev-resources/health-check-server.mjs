@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaDevResourcesSDK } from './sdk.mjs';
 
 const fastify = Fastify({
@@ -64,7 +65,7 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaDevResourcesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaDevResourcesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const resources = await sdk.getFileDevResources(testFileKey);
 
     return {
@@ -93,7 +94,7 @@ fastify.get('/dev-resources/:fileKey', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaDevResourcesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaDevResourcesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const resources = await sdk.getFileDevResources(fileKey);
 
     return {
@@ -122,7 +123,7 @@ fastify.get('/dev-resources/:fileKey/stats', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaDevResourcesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaDevResourcesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const stats = await sdk.getDevResourcesStats(fileKey);
 
     return {
@@ -159,7 +160,7 @@ fastify.post('/dev-resources/:fileKey', async (request, reply) => {
       });
     }
 
-    const sdk = new FigmaDevResourcesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaDevResourcesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const resource = await sdk.createDevResource(fileKey, nodeId, name, url);
 
     return {

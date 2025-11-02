@@ -9,7 +9,6 @@
  */
 
 // Core classes
-export { FigmaCommentsClient } from './src/core/client.mjs';
 export { FigmaCommentsService } from './src/core/service.mjs';
 export { FigmaCommentsSDK } from './src/interfaces/sdk.mjs';
 
@@ -33,8 +32,9 @@ export {
   createErrorFromResponse
 } from './src/core/exceptions.mjs';
 
-// Utility classes
-export { RateLimiter, RequestCache } from '../figma-fetch/dist/index.mjs';
+// Re-export utility classes from @figma-api/fetch for convenience
+// Users can also import these directly from '@figma-api/fetch' if needed
+export { RateLimiter, RequestCache } from '@figma-api/fetch';
 
 // Default export - the main SDK
 export { FigmaCommentsSDK as default } from './src/interfaces/sdk.mjs';

@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import FigmaVariablesSDK from './index.mjs';
 
 const fastify = Fastify({
@@ -69,7 +70,7 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaVariablesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaVariablesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const variables = await sdk.getLocalVariables(testFileKey);
 
     return {
@@ -100,7 +101,7 @@ fastify.get('/variables/:fileKey', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaVariablesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaVariablesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const variables = await sdk.getLocalVariables(fileKey);
 
     return {
@@ -137,7 +138,7 @@ fastify.post('/variables/:fileKey', async (request, reply) => {
       });
     }
 
-    const sdk = new FigmaVariablesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaVariablesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const variable = await sdk.createVariable(fileKey, {
       name,
       variableCollectionId,
@@ -172,7 +173,7 @@ fastify.put('/variables/:fileKey/:variableId', async (request, reply) => {
     const { fileKey, variableId } = request.params;
     const updates = request.body;
 
-    const sdk = new FigmaVariablesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaVariablesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const variable = await sdk.updateVariable(fileKey, variableId, updates);
 
     return {
@@ -202,7 +203,7 @@ fastify.delete('/variables/:fileKey/:variableId', async (request, reply) => {
   try {
     const { fileKey, variableId } = request.params;
 
-    const sdk = new FigmaVariablesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaVariablesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     await sdk.deleteVariable(fileKey, variableId);
 
     return {
@@ -233,7 +234,7 @@ fastify.get('/variables/:fileKey/export', async (request, reply) => {
     const { fileKey } = request.params;
     const { format = 'json' } = request.query;
 
-    const sdk = new FigmaVariablesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaVariablesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const exported = await sdk.exportVariables(fileKey, { format });
 
     return {

@@ -1,38 +1,38 @@
 /**
  * SDK facade for figma-library-analytics
- * Provides ergonomic API over core library analytics client and service
+ * Provides ergonomic API for library analytics operations
  */
 
-import FigmaLibraryAnalyticsClient from './client.mjs';
 import FigmaLibraryAnalyticsService from './service.mjs';
 
 /**
  * High-level SDK for Figma Library Analytics API
  * Provides convenient methods for library analytics operations
- * and abstracts away low-level client complexity.
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaLibraryAnalyticsSDK } from 'figma-library-analytics';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaLibraryAnalyticsSDK({ fetcher });
  */
 export class FigmaLibraryAnalyticsSDK {
   /**
    * Initialize the Figma Library Analytics SDK
-   * @param {Object|string} config - Configuration object or API token
-   * @param {string} config.apiToken - Figma API token with library_analytics:read scope
-   * @param {string} [config.baseUrl] - Custom API base URL
-   * @param {Object} [config.logger] - Custom logger
-   * @param {boolean} [config.enableRetries=true] - Enable automatic retries
-   * @param {boolean} [config.enableCaching=false] - Enable response caching
+   * @param {Object} config - Configuration object
+   * @param {Object} config.fetcher - FigmaApiClient instance (required)
+   * @param {Object} [config.logger=console] - Custom logger
    */
-  constructor(config) {
-    // Handle both string token and config object
-    const options = typeof config === 'string' 
-      ? { apiToken: config }
-      : config;
+  constructor({ fetcher, logger = console } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
+    }
 
-    this.client = new FigmaLibraryAnalyticsClient(options);
-    this.service = new FigmaLibraryAnalyticsService({ 
-      client: this.client, 
-      logger: options.logger || console 
+    this.service = new FigmaLibraryAnalyticsService({
+      fetcher,
+      logger
     });
-    this.logger = options.logger || console;
+    this.logger = logger;
   }
 
   // === Direct Client Access (Low-level API) ===
@@ -48,7 +48,7 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Object>} - Component actions analytics data
    */
   async getComponentActions(fileKey, options) {
-    return this.client.getComponentActions(fileKey, options);
+    return this.service.getComponentActions(fileKey, options);
   }
 
   /**
@@ -60,7 +60,7 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Object>} - Component usage analytics data
    */
   async getComponentUsages(fileKey, options) {
-    return this.client.getComponentUsages(fileKey, options);
+    return this.service.getComponentUsages(fileKey, options);
   }
 
   /**
@@ -74,7 +74,7 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Object>} - Style actions analytics data
    */
   async getStyleActions(fileKey, options) {
-    return this.client.getStyleActions(fileKey, options);
+    return this.service.getStyleActions(fileKey, options);
   }
 
   /**
@@ -86,7 +86,7 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Object>} - Style usage analytics data
    */
   async getStyleUsages(fileKey, options) {
-    return this.client.getStyleUsages(fileKey, options);
+    return this.service.getStyleUsages(fileKey, options);
   }
 
   /**
@@ -100,7 +100,7 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Object>} - Variable actions analytics data
    */
   async getVariableActions(fileKey, options) {
-    return this.client.getVariableActions(fileKey, options);
+    return this.service.getVariableActions(fileKey, options);
   }
 
   /**
@@ -112,7 +112,7 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Object>} - Variable usage analytics data
    */
   async getVariableUsages(fileKey, options) {
-    return this.client.getVariableUsages(fileKey, options);
+    return this.service.getVariableUsages(fileKey, options);
   }
 
   // === High-level Business Operations (Service Layer) ===
@@ -338,47 +338,10 @@ export class FigmaLibraryAnalyticsSDK {
    * @returns {Promise<Array>} - All paginated data
    */
   async getAllData(apiMethod, fileKey, options = {}) {
-    return this.client.getAll(apiMethod.bind(this.client), fileKey, options);
-  }
-
-  /**
-   * Stream analytics data with pagination
-   * @param {Function} apiMethod - The API method to paginate
-   * @param {string} fileKey - Library file key
-   * @param {Object} options - Query options
-   * @returns {AsyncGenerator<Array>} - Analytics data pages
-   */
-  async *streamData(apiMethod, fileKey, options = {}) {
-    for await (const batch of this.client.paginate(apiMethod.bind(this.client), fileKey, options)) {
-      yield batch;
-    }
+    return this.service.getAll(apiMethod.bind(this.service), fileKey, options);
   }
 
   // === Utility Methods ===
-
-  /**
-   * Get supported groupBy options for a specific analytics type
-   * @param {string} analyticsType - Type of analytics ('component', 'style', 'variable')
-   * @param {string} dataType - Type of data ('actions', 'usages')
-   * @returns {Array<string>} - Valid groupBy options
-   */
-  getSupportedGroupByOptions(analyticsType, dataType) {
-    return this.client.getSupportedGroupByOptions(analyticsType, dataType);
-  }
-
-  /**
-   * Validate library file key format
-   * @param {string} fileKey - File key to validate
-   * @returns {boolean} - Whether file key is valid
-   */
-  validateFileKey(fileKey) {
-    try {
-      this.client._validateFileKey(fileKey);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
 
   /**
    * Get available time periods for analytics

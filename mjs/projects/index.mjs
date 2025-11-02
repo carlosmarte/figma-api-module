@@ -4,7 +4,6 @@
  */
 
 // Core components
-export { default as FigmaProjectsClient } from './src/core/client.mjs';
 export { default as FigmaProjectsService } from './src/core/service.mjs';
 
 // High-level SDK

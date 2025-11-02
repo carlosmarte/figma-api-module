@@ -4,9 +4,8 @@
  * Provides high-level methods that compose HTTP client operations
  */
 
-import FigmaComponentsClient from './client.mjs';
-import { 
-  ValidationError, 
+import {
+  ValidationError,
   TeamNotFoundError,
   FileNotFoundError,
   ComponentNotFoundError,
@@ -23,16 +22,14 @@ import {
 export class FigmaComponentsService {
   /**
    * @param {Object} options - Service configuration
-   * @param {string} options.apiToken - Figma personal access token
-   * @param {Object} [options.clientConfig={}] - HTTP client configuration
+   * @param {Object} options.fetcher - FigmaApiClient instance (required)
    * @param {Object} [options.logger=console] - Logger instance
    */
-  constructor({ apiToken, clientConfig = {}, logger = console } = {}) {
-    this.client = new FigmaComponentsClient({
-      apiToken,
-      logger,
-      ...clientConfig
-    });
+  constructor({ fetcher, logger = console } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
+    }
+    this.fetcher = fetcher;
     this.logger = logger;
   }
 
@@ -157,7 +154,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting team components: ${teamId}`, params);
 
-    return this.client.get(`/v1/teams/${teamId}/components`, params);
+    return this.fetcher.get(`/v1/teams/${teamId}/components`, params);
   }
 
   /**
@@ -174,7 +171,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting file components: ${fileKey}`);
 
-    return this.client.get(`/v1/files/${fileKey}/components`);
+    return this.fetcher.get(`/v1/files/${fileKey}/components`);
   }
 
   /**
@@ -191,7 +188,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting component: ${key}`);
 
-    return this.client.get(`/v1/components/${key}`);
+    return this.fetcher.get(`/v1/components/${key}`);
   }
 
   // ==========================================
@@ -223,7 +220,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting team component sets: ${teamId}`, params);
 
-    return this.client.get(`/v1/teams/${teamId}/component_sets`, params);
+    return this.fetcher.get(`/v1/teams/${teamId}/component_sets`, params);
   }
 
   /**
@@ -240,7 +237,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting file component sets: ${fileKey}`);
 
-    return this.client.get(`/v1/files/${fileKey}/component_sets`);
+    return this.fetcher.get(`/v1/files/${fileKey}/component_sets`);
   }
 
   /**
@@ -257,7 +254,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting component set: ${key}`);
 
-    return this.client.get(`/v1/component_sets/${key}`);
+    return this.fetcher.get(`/v1/component_sets/${key}`);
   }
 
   // ==========================================
@@ -289,7 +286,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting team styles: ${teamId}`, params);
 
-    return this.client.get(`/v1/teams/${teamId}/styles`, params);
+    return this.fetcher.get(`/v1/teams/${teamId}/styles`, params);
   }
 
   /**
@@ -306,7 +303,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting file styles: ${fileKey}`);
 
-    return this.client.get(`/v1/files/${fileKey}/styles`);
+    return this.fetcher.get(`/v1/files/${fileKey}/styles`);
   }
 
   /**
@@ -323,7 +320,7 @@ export class FigmaComponentsService {
 
     this.logger.debug(`Getting style: ${key}`);
 
-    return this.client.get(`/v1/styles/${key}`);
+    return this.fetcher.get(`/v1/styles/${key}`);
   }
 
   // ==========================================
@@ -559,7 +556,7 @@ export class FigmaComponentsService {
    * @returns {Object} HTTP client statistics
    */
   getStats() {
-    return this.client.getStats();
+    return this.fetcher.getStats();
   }
 
   /**
@@ -567,7 +564,7 @@ export class FigmaComponentsService {
    * @returns {Promise<boolean>} Whether service is healthy
    */
   async healthCheck() {
-    return this.client.healthCheck();
+    return this.fetcher.healthCheck();
   }
 }
 

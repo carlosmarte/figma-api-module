@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaFilesSDK } from './index.mjs';
 
 const fastify = Fastify({
@@ -67,7 +68,7 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaFilesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaFilesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const file = await sdk.getFile(testFileKey);
 
     return {
@@ -97,7 +98,7 @@ fastify.get('/files/:fileKey', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaFilesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaFilesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const file = await sdk.getFile(fileKey);
 
     return {
@@ -125,7 +126,7 @@ fastify.get('/files/:fileKey/metadata', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaFilesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaFilesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const metadata = await sdk.getFileMetadata(fileKey);
 
     return {
@@ -163,7 +164,7 @@ fastify.get('/files/:fileKey/nodes', async (request, reply) => {
     }
 
     const nodeIds = ids.split(',');
-    const sdk = new FigmaFilesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaFilesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const nodes = await sdk.getFileNodes(fileKey, nodeIds);
 
     return {
@@ -191,7 +192,7 @@ fastify.get('/files/:fileKey/versions', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaFilesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaFilesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const versions = await sdk.getFileVersions(fileKey);
 
     return {
@@ -229,7 +230,7 @@ fastify.get('/files/:fileKey/render', async (request, reply) => {
     }
 
     const nodeIds = ids.split(',');
-    const sdk = new FigmaFilesSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaFilesSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const images = await sdk.renderImage(fileKey, nodeIds, {
       format,
       scale: parseFloat(scale)

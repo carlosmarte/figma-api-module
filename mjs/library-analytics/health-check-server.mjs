@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaLibraryAnalyticsSDK } from './index.mjs';
 
 const fastify = Fastify({
@@ -66,7 +67,7 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaLibraryAnalyticsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaLibraryAnalyticsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const actions = await sdk.getComponentActions(testFileKey);
 
     return {
@@ -96,7 +97,7 @@ fastify.get('/analytics/:fileKey/actions', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaLibraryAnalyticsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaLibraryAnalyticsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const actions = await sdk.getComponentActions(fileKey);
 
     return {
@@ -124,7 +125,7 @@ fastify.get('/analytics/:fileKey/usage', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaLibraryAnalyticsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaLibraryAnalyticsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const usage = await sdk.getComponentUsageData(fileKey);
 
     return {
@@ -152,7 +153,7 @@ fastify.get('/analytics/:fileKey/health', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaLibraryAnalyticsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaLibraryAnalyticsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const health = await sdk.getLibraryHealthReport(fileKey);
 
     return {
@@ -180,7 +181,7 @@ fastify.get('/analytics/:fileKey/trends', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaLibraryAnalyticsSDK({ token: FIGMA_TOKEN });
+    const sdk = new FigmaLibraryAnalyticsSDK({ fetcher: new FigmaApiClient({ apiToken: FIGMA_TOKEN }) });
     const trends = await sdk.getAdoptionTrends(fileKey);
 
     return {

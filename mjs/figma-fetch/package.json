@@ -45,9 +45,9 @@
     "build:types": "tsc -p tsconfig.types.json",
     "rename:mjs": "find dist -name '*.js' -type f ! -name '*.d.ts' -exec sh -c 'mv \"$1\" \"${1%.js}.mjs\"' _ {} \\;",
     "fix:imports": "find dist -name '*.mjs' -type f -exec sed -i '' \"s/from '\\(.*\\)\\.js'/from '\\1.mjs'/g\" {} \\; && find dist -name '*.mjs' -type f -exec sed -i '' 's/from \"\\(.*\\)\\.js\"/from \"\\1.mjs\"/g' {} \\;",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest",
-    "test:unit": "node --experimental-vm-modules node_modules/.bin/jest tests/unit",
-    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test": "node --experimental-vm-modules ../node_modules/.bin/jest",
+    "test:unit": "node --experimental-vm-modules ../node_modules/.bin/jest tests/unit",
+    "test:watch": "node --experimental-vm-modules ../node_modules/.bin/jest --watch",
     "lint": "eslint src --ext .ts",
     "prepublishOnly": "npm run build"
   },

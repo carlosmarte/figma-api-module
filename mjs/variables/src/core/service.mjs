@@ -15,12 +15,18 @@ import {
 } from './exceptions.mjs';
 
 export class FigmaVariablesService {
-  constructor({ client, validator = null, logger = console } = {}) {
-    if (!client) {
-      throw new ApiError('Client is required for service');
+  /**
+   * @param {object} options - Service configuration
+   * @param {object} options.fetcher - FigmaApiClient instance (required)
+   * @param {object} [options.validator=null] - Validator instance
+   * @param {object} [options.logger=console] - Logger instance
+   */
+  constructor({ fetcher, validator = null, logger = console } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
     }
-    
-    this.client = client;
+
+    this.fetcher = fetcher;
     this.validator = validator;
     this.logger = logger;
     this._cache = new Map();
@@ -68,7 +74,7 @@ export class FigmaVariablesService {
     }
 
     try {
-      const response = await this.client.getLocalVariables(fileKey, options);
+      const response = await this.fetcher.getLocalVariables(fileKey, options);
       
       const result = {
         variables: response.meta?.variables || {},
@@ -100,7 +106,7 @@ export class FigmaVariablesService {
     }
 
     try {
-      const response = await this.client.getPublishedVariables(fileKey, options);
+      const response = await this.fetcher.getPublishedVariables(fileKey, options);
       
       const result = {
         variables: response.meta?.variables || {},
@@ -201,7 +207,7 @@ export class FigmaVariablesService {
       }];
     }
 
-    return this.client.updateVariables(fileKey, changes, options);
+    return this.fetcher.updateVariables(fileKey, changes, options);
   }
 
   /**
@@ -239,7 +245,7 @@ export class FigmaVariablesService {
       }));
     }
 
-    return this.client.updateVariables(fileKey, changes, options);
+    return this.fetcher.updateVariables(fileKey, changes, options);
   }
 
   /**
@@ -276,7 +282,7 @@ export class FigmaVariablesService {
       delete changes.variables[0].values;
     }
 
-    return this.client.updateVariables(fileKey, changes, options);
+    return this.fetcher.updateVariables(fileKey, changes, options);
   }
 
   /**
@@ -301,7 +307,7 @@ export class FigmaVariablesService {
       }]
     };
 
-    return this.client.updateVariables(fileKey, changes, options);
+    return this.fetcher.updateVariables(fileKey, changes, options);
   }
 
   /**
@@ -334,7 +340,7 @@ export class FigmaVariablesService {
       }]
     };
 
-    return this.client.updateVariables(fileKey, changes, options);
+    return this.fetcher.updateVariables(fileKey, changes, options);
   }
 
   // Batch operations
@@ -386,7 +392,7 @@ export class FigmaVariablesService {
       }
     });
 
-    return this.client.updateVariables(fileKey, changes, options);
+    return this.fetcher.updateVariables(fileKey, changes, options);
   }
 
   /**

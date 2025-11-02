@@ -1,24 +1,33 @@
 /**
  * SDK facade for figma-dev-resources-client
- * Provides ergonomic API over core client
+ * Provides ergonomic API for Dev Resources operations
  */
 
-import { fetch, ProxyAgent } from 'undici';
-import FigmaDevResourcesClient from './client.mjs';
+import { FigmaDevResourcesService } from './service.mjs';
 
+/**
+ * High-level SDK for Figma Dev Resources API
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaDevResourcesSDK } from 'figma-dev-resources';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaDevResourcesSDK({ fetcher });
+ */
 export class FigmaDevResourcesSDK {
-  constructor(config) {
-    this.client = new FigmaDevResourcesClient(config);
-    
-    // Initialize proxy agent if configured
-    const proxyUrl = config?.proxyUrl || process.env.HTTP_PROXY;
-    const proxyToken = config?.proxyToken || process.env.HTTP_PROXY_TOKEN;
-    this.proxyAgent = null;
-    if (proxyUrl) {
-      this.proxyAgent = proxyToken 
-        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
-        : new ProxyAgent(proxyUrl);
+  /**
+   * @param {Object} config - SDK configuration
+   * @param {Object} config.fetcher - FigmaApiClient instance (required)
+   * @param {Object} [config.logger] - Logger instance
+   */
+  constructor({ fetcher, logger } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
     }
+
+    this.fetcher = fetcher;
+    this.service = new FigmaDevResourcesService({ fetcher, logger });
   }
 
   // High-level methods that compose client operations
@@ -31,7 +40,7 @@ export class FigmaDevResourcesSDK {
    */
   async getFileDevResources(fileKey, nodeIds = null) {
     const options = nodeIds ? { nodeIds } : {};
-    const response = await this.client.getDevResources(fileKey, options);
+    const response = await this.service.getDevResources(fileKey, options);
     return response.dev_resources || [];
   }
 
@@ -54,18 +63,18 @@ export class FigmaDevResourcesSDK {
    * @returns {Promise<Object>} Created dev resource
    */
   async createDevResource(fileKey, nodeId, name, url) {
-    const response = await this.client.createDevResources([{
+    const response = await this.service.createDevResources([{
       file_key: fileKey,
       node_id: nodeId,
       name,
       url
     }]);
 
-    if (response.links_created.length > 0) {
+    if (response.links_created && response.links_created.length > 0) {
       return response.links_created[0];
     }
 
-    if (response.errors.length > 0) {
+    if (response.errors && response.errors.length > 0) {
       throw new Error(response.errors[0].error);
     }
 
@@ -89,7 +98,7 @@ export class FigmaDevResourcesSDK {
       url: resource.url
     }));
 
-    return this.client.createDevResources(devResources);
+    return this.service.createDevResources(devResources);
   }
 
   /**
@@ -109,7 +118,7 @@ export class FigmaDevResourcesSDK {
       url: resource.url
     }));
 
-    return this.client.createDevResources(devResources);
+    return this.service.createDevResources(devResources);
   }
 
   /**
@@ -121,7 +130,7 @@ export class FigmaDevResourcesSDK {
    * @returns {Promise<Object>} Updated dev resource
    */
   async updateDevResource(devResourceId, updates) {
-    const response = await this.client.updateDevResources([{
+    const response = await this.service.updateDevResources([{
       id: devResourceId,
       ...updates
     }]);
@@ -146,7 +155,7 @@ export class FigmaDevResourcesSDK {
    * @returns {Promise<Object>} Update results
    */
   async updateMultipleDevResources(updates) {
-    return this.client.updateDevResources(updates);
+    return this.service.updateDevResources(updates);
   }
 
   /**
@@ -156,7 +165,7 @@ export class FigmaDevResourcesSDK {
    * @returns {Promise<void>}
    */
   async deleteDevResource(fileKey, devResourceId) {
-    await this.client.deleteDevResource(fileKey, devResourceId);
+    await this.service.deleteDevResource(fileKey, devResourceId);
   }
 
   /**
@@ -245,14 +254,14 @@ export class FigmaDevResourcesSDK {
     try {
       // Create new resources
       if (toCreate.length > 0) {
-        const createResponse = await this.client.createDevResources(toCreate);
+        const createResponse = await this.service.createDevResources(toCreate);
         results.created = createResponse.links_created || [];
         results.errors.push(...(createResponse.errors || []));
       }
 
       // Update existing resources
       if (toUpdate.length > 0) {
-        const updateResponse = await this.client.updateDevResources(toUpdate);
+        const updateResponse = await this.service.updateDevResources(toUpdate);
         results.updated = updateResponse.links_updated || [];
         results.errors.push(...(updateResponse.errors || []));
       }
@@ -332,8 +341,12 @@ export class FigmaDevResourcesSDK {
 
   /**
    * Validate dev resource URLs
+   * Note: URL validation requires external HTTP client capabilities.
+   * This method validates URL format only. For live URL validation,
+   * use a separate HTTP client or service.
+   *
    * @param {string} fileKey - The file key
-   * @returns {Promise<Object[]>} Resources with invalid URLs
+   * @returns {Promise<Object[]>} Resources with invalid URL formats
    */
   async validateDevResourceUrls(fileKey) {
     const resources = await this.getFileDevResources(fileKey);
@@ -341,24 +354,13 @@ export class FigmaDevResourcesSDK {
 
     for (const resource of resources) {
       try {
-        const fetchOptions = { method: 'HEAD' };
-        
-        // Add proxy dispatcher if configured
-        if (this.proxyAgent) {
-          fetchOptions.dispatcher = this.proxyAgent;
-        }
-        
-        const response = await fetch(resource.url, fetchOptions);
-        if (!response.ok) {
-          invalid.push({
-            ...resource,
-            error: `HTTP ${response.status}: ${response.statusText}`
-          });
-        }
+        // Validate URL format
+        new URL(resource.url);
+        // URL is valid, skip
       } catch (error) {
         invalid.push({
           ...resource,
-          error: error.message
+          error: `Invalid URL format: ${error.message}`
         });
       }
     }

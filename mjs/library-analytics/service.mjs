@@ -3,23 +3,30 @@
  * Contains business logic and orchestration for library analytics operations
  */
 
-import { 
-  LibraryAnalyticsError, 
+import {
+  LibraryAnalyticsError,
   LibraryAnalyticsValidationError,
-  LibraryAnalyticsAuthError 
-} from './client.mjs';
+  LibraryAnalyticsAuthError
+} from './errors.mjs';
 
 /**
  * Service layer for Figma Library Analytics
  * Provides high-level business operations and data aggregation
  */
 export class FigmaLibraryAnalyticsService {
-  constructor({ client, validator = null, logger = console, cache = null } = {}) {
-    if (!client) {
-      throw new LibraryAnalyticsError('Client is required for service', 'MISSING_CLIENT');
+  /**
+   * @param {object} options - Service configuration
+   * @param {object} options.fetcher - FigmaApiClient instance (required)
+   * @param {object} [options.validator=null] - Validator instance
+   * @param {object} [options.logger=console] - Logger instance
+   * @param {object} [options.cache=null] - Cache instance
+   */
+  constructor({ fetcher, validator = null, logger = console, cache = null } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
     }
-    
-    this.client = client;
+
+    this.fetcher = fetcher;
     this.validator = validator;
     this.logger = logger;
     this.cache = cache;
@@ -31,10 +38,20 @@ export class FigmaLibraryAnalyticsService {
       ttl: 10 * 60 * 1000, // 10 minutes for analytics data
       maxSize: 50
     };
-    
+
     this.aggregationConfig = {
       maxConcurrency: 3,
       batchSize: 100
+    };
+
+    // API endpoint paths
+    this.endpoints = {
+      componentActions: '/v1/analytics/libraries/{file_key}/component/actions',
+      componentUsages: '/v1/analytics/libraries/{file_key}/component/usages',
+      styleActions: '/v1/analytics/libraries/{file_key}/style/actions',
+      styleUsages: '/v1/analytics/libraries/{file_key}/style/usages',
+      variableActions: '/v1/analytics/libraries/{file_key}/variable/actions',
+      variableUsages: '/v1/analytics/libraries/{file_key}/variable/usages'
     };
 
     // Default date ranges for analytics
@@ -66,6 +83,99 @@ export class FigmaLibraryAnalyticsService {
     };
   }
 
+  // === Low-level API methods ===
+
+  /**
+   * Get component actions analytics
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Component actions data
+   */
+  async getComponentActions(fileKey, options = {}) {
+    const path = this.endpoints.componentActions.replace('{file_key}', fileKey);
+    return this.fetcher.get(path, options);
+  }
+
+  /**
+   * Get component usages analytics
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Component usages data
+   */
+  async getComponentUsages(fileKey, options = {}) {
+    const path = this.endpoints.componentUsages.replace('{file_key}', fileKey);
+    return this.fetcher.get(path, options);
+  }
+
+  /**
+   * Get style actions analytics
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Style actions data
+   */
+  async getStyleActions(fileKey, options = {}) {
+    const path = this.endpoints.styleActions.replace('{file_key}', fileKey);
+    return this.fetcher.get(path, options);
+  }
+
+  /**
+   * Get style usages analytics
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Style usages data
+   */
+  async getStyleUsages(fileKey, options = {}) {
+    const path = this.endpoints.styleUsages.replace('{file_key}', fileKey);
+    return this.fetcher.get(path, options);
+  }
+
+  /**
+   * Get variable actions analytics
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Variable actions data
+   */
+  async getVariableActions(fileKey, options = {}) {
+    const path = this.endpoints.variableActions.replace('{file_key}', fileKey);
+    return this.fetcher.get(path, options);
+  }
+
+  /**
+   * Get variable usages analytics
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Object>} - Variable usages data
+   */
+  async getVariableUsages(fileKey, options = {}) {
+    const path = this.endpoints.variableUsages.replace('{file_key}', fileKey);
+    return this.fetcher.get(path, options);
+  }
+
+  /**
+   * Get all paginated data for an analytics endpoint
+   * @param {Function} apiMethod - API method to call
+   * @param {string} fileKey - Library file key
+   * @param {Object} options - Query options
+   * @returns {Promise<Array>} - All paginated data
+   */
+  async getAll(apiMethod, fileKey, options = {}) {
+    const allData = [];
+    let cursor = null;
+
+    do {
+      const opts = cursor ? { ...options, cursor } : options;
+      const response = await apiMethod(fileKey, opts);
+
+      if (response && response.data) {
+        allData.push(...response.data);
+      }
+
+      cursor = response?.meta?.next_cursor || null;
+    } while (cursor);
+
+    return allData;
+  }
+
   // === Component Analytics Business Logic ===
 
   /**
@@ -82,20 +192,21 @@ export class FigmaLibraryAnalyticsService {
 
     try {
       // Get component actions grouped by component
-      const actionsPromise = this.client.getAll(
-        this.client.getComponentActions.bind(this.client),
+      const actionsPromise = this.getAll(
+        this.getComponentActions.bind(this),
         fileKey,
         {
           groupBy: 'component',
-          ...dateRange
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate
         }
       );
 
       let usagesPromise = null;
       if (includeUsage) {
         // Get component usages grouped by component
-        usagesPromise = this.client.getAll(
-          this.client.getComponentUsages.bind(this.client),
+        usagesPromise = this.getAll(
+          this.getComponentUsages.bind(this),
           fileKey,
           { groupBy: 'component' }
         );
@@ -126,8 +237,8 @@ export class FigmaLibraryAnalyticsService {
     const { limit = 10, sortBy = 'total_usage' } = options;
 
     try {
-      const usages = await this.client.getAll(
-        this.client.getComponentUsages.bind(this.client),
+      const usages = await this.getAll(
+        this.getComponentUsages.bind(this),
         fileKey,
         { groupBy: 'component' }
       );
@@ -152,12 +263,13 @@ export class FigmaLibraryAnalyticsService {
     const dateRange = this.defaultDateRanges[period]?.() || this.defaultDateRanges.lastMonth();
 
     try {
-      const teamActions = await this.client.getAll(
-        this.client.getComponentActions.bind(this.client),
+      const teamActions = await this.getAll(
+        this.getComponentActions.bind(this),
         fileKey,
         {
           groupBy: 'team',
-          ...dateRange
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate
         }
       );
 
@@ -184,19 +296,20 @@ export class FigmaLibraryAnalyticsService {
     const dateRange = this.defaultDateRanges[period]?.() || this.defaultDateRanges.lastMonth();
 
     try {
-      const actionsPromise = this.client.getAll(
-        this.client.getStyleActions.bind(this.client),
+      const actionsPromise = this.getAll(
+        this.getStyleActions.bind(this),
         fileKey,
         {
           groupBy: 'style',
-          ...dateRange
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate
         }
       );
 
       let usagesPromise = null;
       if (includeUsage) {
-        usagesPromise = this.client.getAll(
-          this.client.getStyleUsages.bind(this.client),
+        usagesPromise = this.getAll(
+          this.getStyleUsages.bind(this),
           fileKey,
           { groupBy: 'style' }
         );
@@ -227,8 +340,8 @@ export class FigmaLibraryAnalyticsService {
     const { limit = 10, sortBy = 'total_usage' } = options;
 
     try {
-      const usages = await this.client.getAll(
-        this.client.getStyleUsages.bind(this.client),
+      const usages = await this.getAll(
+        this.getStyleUsages.bind(this),
         fileKey,
         { groupBy: 'style' }
       );
@@ -256,19 +369,20 @@ export class FigmaLibraryAnalyticsService {
     const dateRange = this.defaultDateRanges[period]?.() || this.defaultDateRanges.lastMonth();
 
     try {
-      const actionsPromise = this.client.getAll(
-        this.client.getVariableActions.bind(this.client),
+      const actionsPromise = this.getAll(
+        this.getVariableActions.bind(this),
         fileKey,
         {
           groupBy: 'variable',
-          ...dateRange
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate
         }
       );
 
       let usagesPromise = null;
       if (includeUsage) {
-        usagesPromise = this.client.getAll(
-          this.client.getVariableUsages.bind(this.client),
+        usagesPromise = this.getAll(
+          this.getVariableUsages.bind(this),
           fileKey,
           { groupBy: 'variable' }
         );
@@ -472,8 +586,8 @@ export class FigmaLibraryAnalyticsService {
       type: context.type
     };
 
-    engagement.engagementRate = engagement.totalTeams > 0 
-      ? engagement.activeTeams / engagement.totalTeams 
+    engagement.engagementRate = engagement.totalTeams > 0
+      ? engagement.activeTeams / engagement.totalTeams
       : 0;
 
     return engagement;
@@ -494,16 +608,16 @@ export class FigmaLibraryAnalyticsService {
   }
 
   _generateHealthSummary(componentMetrics, styleMetrics, variableMetrics) {
-    const totalAssets = (componentMetrics.totalComponents || 0) + 
-                       (styleMetrics.totalStyles || 0) + 
+    const totalAssets = (componentMetrics.totalComponents || 0) +
+                       (styleMetrics.totalStyles || 0) +
                        (variableMetrics.totalVariables || 0);
 
-    const totalUsages = (componentMetrics.totalUsages || 0) + 
-                       (styleMetrics.totalUsages || 0) + 
+    const totalUsages = (componentMetrics.totalUsages || 0) +
+                       (styleMetrics.totalUsages || 0) +
                        (variableMetrics.totalUsages || 0);
 
-    const activeAssets = (componentMetrics.activeComponents || 0) + 
-                        (styleMetrics.activeStyles || 0) + 
+    const activeAssets = (componentMetrics.activeComponents || 0) +
+                        (styleMetrics.activeStyles || 0) +
                         (variableMetrics.activeVariables || 0);
 
     return {
@@ -517,16 +631,16 @@ export class FigmaLibraryAnalyticsService {
 
   _calculateHealthScore(componentMetrics, styleMetrics, variableMetrics) {
     // Simple health score based on adoption rates and usage
-    const componentScore = componentMetrics.totalComponents > 0 
-      ? (componentMetrics.activeComponents / componentMetrics.totalComponents) * 100 
+    const componentScore = componentMetrics.totalComponents > 0
+      ? (componentMetrics.activeComponents / componentMetrics.totalComponents) * 100
       : 0;
 
-    const styleScore = styleMetrics.totalStyles > 0 
-      ? (styleMetrics.activeStyles / styleMetrics.totalStyles) * 100 
+    const styleScore = styleMetrics.totalStyles > 0
+      ? (styleMetrics.activeStyles / styleMetrics.totalStyles) * 100
       : 0;
 
-    const variableScore = variableMetrics.totalVariables > 0 
-      ? (variableMetrics.activeVariables / variableMetrics.totalVariables) * 100 
+    const variableScore = variableMetrics.totalVariables > 0
+      ? (variableMetrics.activeVariables / variableMetrics.totalVariables) * 100
       : 0;
 
     return Math.round((componentScore + styleScore + variableScore) / 3);

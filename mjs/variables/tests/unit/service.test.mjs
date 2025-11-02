@@ -13,28 +13,28 @@ import {
 
 describe('FigmaVariablesService', () => {
   let service;
-  let mockClient;
+  let mockFetcher;
   const mockFileKey = 'test-file-key';
 
   beforeEach(() => {
-    mockClient = {
+    mockFetcher = {
       getLocalVariables: jest.fn(),
       getPublishedVariables: jest.fn(),
       updateVariables: jest.fn()
     };
 
-    service = new FigmaVariablesService({ client: mockClient });
+    service = new FigmaVariablesService({ fetcher: mockFetcher });
   });
 
   describe('constructor', () => {
-    it('should create service with client', () => {
-      expect(service.client).toBe(mockClient);
+    it('should create service with fetcher', () => {
+      expect(service.fetcher).toBe(mockFetcher);
     });
 
-    it('should throw error without client', () => {
+    it('should throw error without fetcher', () => {
       expect(() => {
         new FigmaVariablesService({});
-      }).toThrow(ApiError);
+      }).toThrow('fetcher parameter is required');
     });
   });
 
@@ -52,11 +52,11 @@ describe('FigmaVariablesService', () => {
     };
 
     it('should get local variables successfully', async () => {
-      mockClient.getLocalVariables.mockResolvedValue(mockResponse);
+      mockFetcher.getLocalVariables.mockResolvedValue(mockResponse);
 
       const result = await service.getLocalVariables(mockFileKey);
 
-      expect(mockClient.getLocalVariables).toHaveBeenCalledWith(mockFileKey, {});
+      expect(mockFetcher.getLocalVariables).toHaveBeenCalledWith(mockFileKey, {});
       expect(result.variables).toEqual(mockResponse.meta.variables);
       expect(result.variableCollections).toEqual(mockResponse.meta.variableCollections);
       expect(result.stats.variableCount).toBe(2);
@@ -68,10 +68,10 @@ describe('FigmaVariablesService', () => {
     });
 
     it('should handle not found errors', async () => {
-      mockClient.getLocalVariables.mockRejectedValue(
+      mockFetcher.getLocalVariables.mockRejectedValue(
         new Error('Not found')
       );
-      mockClient.getLocalVariables.mockRejectedValue(
+      mockFetcher.getLocalVariables.mockRejectedValue(
         Object.assign(new Error('Not found'), { code: 'NOT_FOUND' })
       );
 
@@ -118,11 +118,11 @@ describe('FigmaVariablesService', () => {
         meta: { tempIdToRealId: { 'temp_variable_123': 'real_var_456' } }
       };
       
-      mockClient.updateVariables.mockResolvedValue(mockResponse);
+      mockFetcher.updateVariables.mockResolvedValue(mockResponse);
 
       const result = await service.createVariable(mockFileKey, mockVariableData);
 
-      expect(mockClient.updateVariables).toHaveBeenCalledWith(
+      expect(mockFetcher.updateVariables).toHaveBeenCalledWith(
         mockFileKey,
         expect.objectContaining({
           variables: expect.arrayContaining([
@@ -189,13 +189,13 @@ describe('FigmaVariablesService', () => {
       });
 
       const mockResponse = { success: true };
-      mockClient.updateVariables.mockResolvedValue(mockResponse);
+      mockFetcher.updateVariables.mockResolvedValue(mockResponse);
 
       const updates = { name: 'Updated Variable' };
       const result = await service.updateVariable(mockFileKey, 'var1', updates);
 
       expect(service.getVariable).toHaveBeenCalledWith(mockFileKey, 'var1', {});
-      expect(mockClient.updateVariables).toHaveBeenCalledWith(
+      expect(mockFetcher.updateVariables).toHaveBeenCalledWith(
         mockFileKey,
         {
           variables: [{
@@ -211,7 +211,7 @@ describe('FigmaVariablesService', () => {
 
     it('should handle value updates', async () => {
       service.getVariable = jest.fn().mockResolvedValue({});
-      mockClient.updateVariables.mockResolvedValue({});
+      mockFetcher.updateVariables.mockResolvedValue({});
 
       const updates = {
         name: 'Updated Variable',
@@ -220,7 +220,7 @@ describe('FigmaVariablesService', () => {
 
       await service.updateVariable(mockFileKey, 'var1', updates);
 
-      expect(mockClient.updateVariables).toHaveBeenCalledWith(
+      expect(mockFetcher.updateVariables).toHaveBeenCalledWith(
         mockFileKey,
         expect.objectContaining({
           variables: [{
@@ -243,11 +243,11 @@ describe('FigmaVariablesService', () => {
     it('should delete variable successfully', async () => {
       service.getVariable = jest.fn().mockResolvedValue({});
       const mockResponse = { success: true };
-      mockClient.updateVariables.mockResolvedValue(mockResponse);
+      mockFetcher.updateVariables.mockResolvedValue(mockResponse);
 
       const result = await service.deleteVariable(mockFileKey, 'var1');
 
-      expect(mockClient.updateVariables).toHaveBeenCalledWith(
+      expect(mockFetcher.updateVariables).toHaveBeenCalledWith(
         mockFileKey,
         {
           variables: [{
@@ -264,7 +264,7 @@ describe('FigmaVariablesService', () => {
   describe('createVariableAlias', () => {
     it('should create alias successfully', async () => {
       const mockResponse = { success: true };
-      mockClient.updateVariables.mockResolvedValue(mockResponse);
+      mockFetcher.updateVariables.mockResolvedValue(mockResponse);
 
       const result = await service.createVariableAlias(
         mockFileKey, 
@@ -273,7 +273,7 @@ describe('FigmaVariablesService', () => {
         'mode1'
       );
 
-      expect(mockClient.updateVariables).toHaveBeenCalledWith(
+      expect(mockFetcher.updateVariables).toHaveBeenCalledWith(
         mockFileKey,
         {
           variableModeValues: [{
@@ -315,11 +315,11 @@ describe('FigmaVariablesService', () => {
         }
       ];
 
-      mockClient.updateVariables.mockResolvedValue({ success: true });
+      mockFetcher.updateVariables.mockResolvedValue({ success: true });
 
       await service.batchCreateVariables(mockFileKey, variablesData);
 
-      expect(mockClient.updateVariables).toHaveBeenCalledWith(
+      expect(mockFetcher.updateVariables).toHaveBeenCalledWith(
         mockFileKey,
         expect.objectContaining({
           variables: expect.arrayContaining([

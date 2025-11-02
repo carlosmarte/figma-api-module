@@ -13,17 +13,25 @@
  */
 
 import FigmaCommentsService from '../core/service.mjs';
-import FigmaCommentsClient from '../core/client.mjs';
 
 /**
  * High-level SDK for Figma Comments API
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaCommentsSDK } from 'figma-comments';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaCommentsSDK({ fetcher });
  */
 export class FigmaCommentsSDK {
-  constructor(config = {}) {
-    const { apiToken, logger = console, ...clientConfig } = config;
-    
-    this.client = new FigmaCommentsClient({ apiToken, logger, ...clientConfig });
-    this.service = new FigmaCommentsService({ client: this.client, logger });
+  /**
+   * @param {Object} config - SDK configuration
+   * @param {Object} config.fetcher - FigmaApiClient instance (required)
+   * @param {Object} [config.logger=console] - Logger instance
+   */
+  constructor({ fetcher, logger = console } = {}) {
+    this.service = new FigmaCommentsService({ fetcher, logger });
     this.logger = logger;
   }
 
@@ -432,7 +440,13 @@ export class FigmaCommentsSDK {
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {
-    return this.client.healthCheck();
+    // Simple health check - try to make a request to /v1/me endpoint
+    try {
+      await this.service.fetcher.request('/v1/me');
+      return { status: 'healthy', message: 'API is responding normally' };
+    } catch (error) {
+      return { status: 'unhealthy', error: error.message };
+    }
   }
 
   /**
@@ -440,14 +454,18 @@ export class FigmaCommentsSDK {
    * @returns {Object} Client statistics
    */
   getStats() {
-    return this.client.getStats();
+    // Return statistics from the fetcher if available
+    return this.service.fetcher.getStats ? this.service.fetcher.getStats() : {};
   }
 
   /**
    * Reset client cache and statistics
    */
   reset() {
-    this.client.reset();
+    // Reset cache if available
+    if (this.service.fetcher.reset) {
+      this.service.fetcher.reset();
+    }
   }
 
   // Private helper methods

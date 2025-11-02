@@ -7,6 +7,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaVariablesSDK } from './sdk.mjs';
 
 const program = new Command();
@@ -32,10 +33,17 @@ function getSDK(options) {
     process.exit(1);
   }
 
+  // Create fetcher with HTTP configuration
+  const fetcher = new FigmaApiClient({
+    apiToken: accessToken,
+    baseUrl: options.baseUrl || 'https://api.figma.com',
+    timeout: parseInt(options.timeout, 10) || 30000,
+    logger: options.verbose ? console : undefined
+  });
+
+  // Create SDK with fetcher dependency injection
   return new FigmaVariablesSDK({
-    accessToken,
-    baseUrl: options.baseUrl,
-    timeout: parseInt(options.timeout, 10),
+    fetcher,
     logger: options.verbose ? console : { debug: () => {}, error: console.error, warn: console.warn }
   });
 }

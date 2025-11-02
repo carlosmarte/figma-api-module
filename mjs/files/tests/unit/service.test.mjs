@@ -3,55 +3,33 @@
  */
 
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { FigmaFilesService } from '../../src/core/service.mjs';
 import { ValidationError, NodeNotFoundError } from '../../src/core/exceptions.mjs';
-
-// Mock the client module before importing the service
-const mockGet = jest.fn();
-const mockPost = jest.fn();
-const mockGetStats = jest.fn();
-const mockHealthCheck = jest.fn();
-
-const MockClient = jest.fn().mockImplementation(() => ({
-  get: mockGet,
-  post: mockPost,
-  getStats: mockGetStats,
-  healthCheck: mockHealthCheck
-}));
-
-jest.unstable_mockModule('../../src/core/client.mjs', () => ({
-  FigmaFilesClient: MockClient,
-  default: MockClient
-}));
-
-// Import the service after mocking the client
-const { FigmaFilesService } = await import('../../src/core/service.mjs');
 
 describe('FigmaFilesService', () => {
   let service;
-  let mockClient;
-  const mockApiToken = 'test-token';
+  let mockFetcher;
 
   beforeEach(() => {
-    // Reset all mocks before each test
-    jest.clearAllMocks();
-
-    // Restore the mock implementation for MockClient
-    MockClient.mockImplementation(() => ({
-      get: mockGet,
-      post: mockPost,
-      getStats: mockGetStats,
-      healthCheck: mockHealthCheck
-    }));
+    // Create mock fetcher (simulates FigmaApiClient)
+    mockFetcher = {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+      getStats: jest.fn(),
+      healthCheck: jest.fn()
+    };
 
     // Set default return values
-    mockGetStats.mockReturnValue({ totalRequests: 0 });
-    mockHealthCheck.mockResolvedValue(true);
+    mockFetcher.getStats.mockReturnValue({ totalRequests: 0 });
+    mockFetcher.healthCheck.mockResolvedValue(true);
 
+    // Create service with mock fetcher
     service = new FigmaFilesService({
-      apiToken: mockApiToken,
+      fetcher: mockFetcher,
       logger: { debug: jest.fn(), error: jest.fn(), warn: jest.fn() }
     });
-    mockClient = service.client;
   });
 
   afterEach(() => {
@@ -59,9 +37,13 @@ describe('FigmaFilesService', () => {
   });
 
   describe('constructor', () => {
-    it('should create service with client', () => {
-      expect(service.client).toBeDefined();
+    it('should create service with fetcher', () => {
+      expect(service.fetcher).toBeDefined();
       expect(service.logger).toBeDefined();
+    });
+
+    it('should throw error if fetcher is not provided', () => {
+      expect(() => new FigmaFilesService({})).toThrow('fetcher parameter is required');
     });
   });
 
@@ -133,17 +115,17 @@ describe('FigmaFilesService', () => {
   describe('getFile', () => {
     it('should get file with basic parameters', async () => {
       const mockResponse = { name: 'Test File', document: {} };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.getFile('test-key');
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key', {});
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key', {});
       expect(result).toEqual(mockResponse);
     });
 
     it('should pass through options correctly', async () => {
       const mockResponse = { name: 'Test File', document: {} };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const options = {
         version: 'v123',
@@ -156,7 +138,7 @@ describe('FigmaFilesService', () => {
 
       await service.getFile('test-key', options);
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key', {
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key', {
         version: 'v123',
         ids: '1:2,3:4',
         depth: 2,
@@ -179,11 +161,11 @@ describe('FigmaFilesService', () => {
           '3:4': { id: '3:4', name: 'Node 2' }
         }
       };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.getFileNodes('test-key', '1:2,3:4');
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
         ids: '1:2,3:4'
       });
       expect(result).toEqual(mockResponse);
@@ -196,7 +178,7 @@ describe('FigmaFilesService', () => {
           '3:4': null // Node not found
         }
       };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       await expect(service.getFileNodes('test-key', '1:2,3:4'))
         .rejects.toThrow(NodeNotFoundError);
@@ -204,7 +186,7 @@ describe('FigmaFilesService', () => {
 
     it('should pass through options correctly', async () => {
       const mockResponse = { nodes: {} };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const options = {
         version: 'v123',
@@ -215,7 +197,7 @@ describe('FigmaFilesService', () => {
 
       await service.getFileNodes('test-key', '1:2', options);
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key/nodes', {
         ids: '1:2',
         version: 'v123',
         depth: 1,
@@ -238,11 +220,11 @@ describe('FigmaFilesService', () => {
           '3:4': 'https://image2.url'
         }
       };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.renderImages('test-key', '1:2,3:4');
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/images/test-key', {
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/images/test-key', {
         ids: '1:2,3:4'
       });
       expect(result).toEqual(mockResponse);
@@ -255,7 +237,7 @@ describe('FigmaFilesService', () => {
           '3:4': null // Render failed
         }
       };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.renderImages('test-key', '1:2,3:4');
 
@@ -267,7 +249,7 @@ describe('FigmaFilesService', () => {
 
     it('should pass through all options correctly', async () => {
       const mockResponse = { images: {} };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const options = {
         version: 'v123',
@@ -283,7 +265,7 @@ describe('FigmaFilesService', () => {
 
       await service.renderImages('test-key', '1:2', options);
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/images/test-key', {
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/images/test-key', {
         ids: '1:2',
         version: 'v123',
         scale: 2,
@@ -310,11 +292,11 @@ describe('FigmaFilesService', () => {
   describe('getImageFills', () => {
     it('should get image fills', async () => {
       const mockResponse = { images: { 'ref1': 'https://image.url' } };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.getImageFills('test-key');
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/images');
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key/images');
       expect(result).toEqual(mockResponse);
     });
 
@@ -326,11 +308,11 @@ describe('FigmaFilesService', () => {
   describe('getFileMetadata', () => {
     it('should get file metadata', async () => {
       const mockResponse = { name: 'Test File', lastModified: '2023-01-01' };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.getFileMetadata('test-key');
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/meta');
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key/meta');
       expect(result).toEqual(mockResponse);
     });
 
@@ -342,17 +324,17 @@ describe('FigmaFilesService', () => {
   describe('getFileVersions', () => {
     it('should get file versions with basic parameters', async () => {
       const mockResponse = { versions: [] };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const result = await service.getFileVersions('test-key');
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/versions', {});
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key/versions', {});
       expect(result).toEqual(mockResponse);
     });
 
     it('should pass through options correctly', async () => {
       const mockResponse = { versions: [] };
-      mockGet.mockResolvedValue(mockResponse);
+      mockFetcher.get.mockResolvedValue(mockResponse);
 
       const options = {
         pageSize: 20,
@@ -362,7 +344,7 @@ describe('FigmaFilesService', () => {
 
       await service.getFileVersions('test-key', options);
 
-      expect(mockGet).toHaveBeenCalledWith('/v1/files/test-key/versions', {
+      expect(mockFetcher.get).toHaveBeenCalledWith('/v1/files/test-key/versions', {
         page_size: 20,
         before: 123,
         after: 456
@@ -384,7 +366,7 @@ describe('FigmaFilesService', () => {
       const mockResponse1 = { name: 'File 1' };
       const mockResponse2 = { name: 'File 2' };
       
-      mockGet
+      mockFetcher.get
         .mockResolvedValueOnce(mockResponse1)
         .mockResolvedValueOnce(mockResponse2);
 
@@ -398,7 +380,7 @@ describe('FigmaFilesService', () => {
     it('should handle partial failures', async () => {
       const mockResponse1 = { name: 'File 1' };
       
-      mockGet
+      mockFetcher.get
         .mockResolvedValueOnce(mockResponse1)
         .mockRejectedValueOnce(new Error('Not found'));
 
@@ -418,19 +400,20 @@ describe('FigmaFilesService', () => {
   describe('utility methods', () => {
     it('should get stats from client', () => {
       const mockStats = { totalRequests: 10 };
-      mockGetStats.mockReturnValue(mockStats);
+      mockFetcher.getStats.mockReturnValue(mockStats);
 
       const result = service.getStats();
 
       expect(result).toEqual(mockStats);
     });
 
-    it('should perform health check via client', async () => {
-      mockHealthCheck.mockResolvedValue(true);
+    it('should perform health check via fetcher', async () => {
+      mockFetcher.healthCheck.mockResolvedValue(true);
 
       const result = await service.healthCheck();
 
       expect(result).toBe(true);
+      expect(mockFetcher.healthCheck).toHaveBeenCalled();
     });
   });
 });

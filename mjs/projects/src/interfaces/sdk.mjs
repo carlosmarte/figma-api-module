@@ -1,53 +1,37 @@
 /**
  * SDK facade for figma-projects
- * Provides ergonomic API over core client and service layers
+ * Provides ergonomic API over core service layer
  */
 
-import FigmaProjectsClient from '../core/client.mjs';
 import FigmaProjectsService from '../core/service.mjs';
-import { ConfigurationError } from '../core/exceptions.mjs';
 
 /**
  * High-level SDK for Figma Projects API
- * Combines client and service functionality with convenience methods
+ * Provides convenient methods for project operations
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaProjectsSDK } from 'figma-projects';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaProjectsSDK({ fetcher });
  */
 export class FigmaProjectsSDK {
   /**
-   * @param {object|string} config - Configuration object or API token string
-   * @param {string} config.apiToken - Figma API personal access token
-   * @param {string} [config.baseUrl] - Base API URL
-   * @param {object} [config.logger] - Logger instance
-   * @param {number} [config.timeout] - Request timeout in milliseconds
-   * @param {number} [config.maxRetries] - Maximum retry attempts
-   * @param {boolean} [config.enableCache] - Enable response caching
-   * @param {boolean} [config.enableMetrics] - Enable request metrics
-   * @param {number} [config.rateLimitRpm] - Rate limit (requests per minute)
+   * @param {object} config - SDK configuration
+   * @param {object} config.fetcher - FigmaApiClient instance (required)
+   * @param {object} [config.logger=console] - Logger instance
    * @param {object} [config.serviceConfig] - Service layer configuration
    */
-  constructor(config) {
-    // Allow passing API token as string for convenience
-    if (typeof config === 'string') {
-      config = { apiToken: config };
-    }
-
-    if (!config || !config.apiToken) {
-      throw new ConfigurationError(
-        'API token is required. Get one from https://www.figma.com/developers/api#access-tokens',
-        'apiToken'
-      );
-    }
-
-    // Initialize client
-    this.client = new FigmaProjectsClient(config);
-
+  constructor({ fetcher, logger = console, serviceConfig = {} } = {}) {
     // Initialize service
     this.service = new FigmaProjectsService({
-      client: this.client,
-      logger: config.logger,
-      config: config.serviceConfig
+      fetcher,
+      logger,
+      config: serviceConfig
     });
 
-    this.logger = config.logger || console;
+    this.logger = logger;
     this.logger.debug('FigmaProjectsSDK initialized');
   }
 
@@ -161,21 +145,12 @@ export class FigmaProjectsSDK {
     try {
       this.logger.debug('Performing health check');
 
-      // Use the rate limiter status as a simple connectivity test
-      const rateLimitStatus = this.client.getRateLimitStatus();
-      const metrics = this.client.getMetrics();
-      const cacheStats = this.client.getCacheStats();
-
-      // Test with a minimal API call - we can't make a real call without a team ID
-      // so we'll use the client's internal status
+      // Simple health check - SDK is operational if service is initialized
       const status = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        apiConnectivity: 'ok',
-        authentication: 'ok',
-        rateLimit: rateLimitStatus,
-        metrics: metrics,
-        cache: cacheStats,
+        sdkInitialized: true,
+        serviceInitialized: !!this.service,
         version: '1.0.0'
       };
 
@@ -184,7 +159,7 @@ export class FigmaProjectsSDK {
 
     } catch (error) {
       this.logger.error('Health check failed', { error: error.message });
-      
+
       return {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
@@ -200,24 +175,17 @@ export class FigmaProjectsSDK {
    * @returns {object} Comprehensive SDK metrics
    */
   getMetrics() {
-    const clientMetrics = this.client.getMetrics();
-    const rateLimitStatus = this.client.getRateLimitStatus();
-    const cacheStats = this.client.getCacheStats();
-
     return {
-      client: clientMetrics,
-      rateLimit: rateLimitStatus,
-      cache: cacheStats,
+      sdkVersion: '1.0.0',
+      serviceInitialized: !!this.service,
       timestamp: new Date().toISOString()
     };
   }
 
   /**
-   * Clear all caches and reset metrics
+   * Reset SDK state (placeholder for future cache/metrics implementation)
    */
   reset() {
-    this.client.clearCache();
-    this.client.resetMetrics();
     this.logger.debug('SDK state reset');
   }
 

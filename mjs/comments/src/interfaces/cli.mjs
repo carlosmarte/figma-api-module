@@ -17,7 +17,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import FigmaCommentsSDK from './sdk.mjs';
+import { FigmaApiClient } from '@figma-api/fetch';
+import { FigmaCommentsSDK } from './sdk.mjs';
 import { promises as fs } from 'fs';
 
 const program = new Command();
@@ -44,19 +45,21 @@ function getSDK(options, command) {
     process.exit(1);
   }
 
-  const logger = globalOpts.verbose ? console : { 
-    debug: () => {}, 
-    info: console.info, 
-    warn: console.warn, 
-    error: console.error 
+  const logger = globalOpts.verbose ? console : {
+    debug: () => {},
+    info: console.info,
+    warn: console.warn,
+    error: console.error
   };
 
-  return new FigmaCommentsSDK({
+  // Create FigmaApiClient instance with dependency injection
+  const fetcher = new FigmaApiClient({
     apiToken: token,
-    logger,
-    cache: globalOpts.cache ? undefined : null,
-    timeout: parseInt(globalOpts.timeout)
+    timeout: parseInt(globalOpts.timeout),
+    enableCache: globalOpts.cache
   });
+
+  return new FigmaCommentsSDK({ fetcher, logger });
 }
 
 // Helper to format output

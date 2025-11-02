@@ -8,6 +8,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaFilesSDK } from './sdk.mjs';
 
 const program = new Command();
@@ -34,16 +35,18 @@ function getSDK(options) {
   }
 
   const clientConfig = {
+    apiToken,
     timeout: parseInt(options.timeout),
     retryConfig: {
       maxRetries: parseInt(options.maxRetries)
     }
   };
 
+  const fetcher = new FigmaApiClient(clientConfig);
+
   return new FigmaFilesSDK({
-    apiToken,
-    logger: options.verbose ? console : { debug: () => {}, warn: console.warn, error: console.error },
-    clientConfig
+    fetcher,
+    logger: options.verbose ? console : { debug: () => {}, warn: console.warn, error: console.error }
   });
 }
 

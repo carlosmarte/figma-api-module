@@ -1,45 +1,33 @@
 /**
  * SDK facade for figma-webhooks
- * Provides ergonomic API over core webhook client
+ * Provides ergonomic API for Figma Webhooks operations
  */
-
-import { fetch, ProxyAgent } from 'undici';
-import FigmaWebhooksClient from './client.mjs';
 
 /**
  * High-level SDK for Figma Webhooks API
  * Provides convenient methods for common webhook operations
- * and abstracts away low-level client complexity.
+ *
+ * @example
+ * import { FigmaApiClient } from '@figma-api/fetch';
+ * import { FigmaWebhooksSDK } from 'figma-webhooks';
+ *
+ * const fetcher = new FigmaApiClient({ apiToken: process.env.FIGMA_TOKEN });
+ * const sdk = new FigmaWebhooksSDK({ fetcher });
  */
 export class FigmaWebhooksSDK {
   /**
    * Initialize the Figma Webhooks SDK
-   * @param {Object|string} config - Configuration object or API token
-   * @param {string} config.apiToken - Figma API token
-   * @param {string} [config.baseUrl] - Custom API base URL
-   * @param {Object} [config.logger] - Custom logger
-   * @param {boolean} [config.enableRetries=true] - Enable automatic retries
-   * @param {boolean} [config.enableCaching=false] - Enable response caching
+   * @param {Object} config - Configuration object
+   * @param {Object} config.fetcher - FigmaApiClient instance (required)
+   * @param {Object} [config.logger=console] - Custom logger
    */
-  constructor(config) {
-    // Handle both string token and config object
-    const options = typeof config === 'string' 
-      ? { apiToken: config }
-      : config;
-
-    this.client = new FigmaWebhooksClient(options);
-    this.logger = options.logger || console;
-    
-    // Initialize proxy agent if configured
-    const proxyUrl = options.proxyUrl || process.env.HTTP_PROXY;
-    const proxyToken = options.proxyToken || process.env.HTTP_PROXY_TOKEN;
-    this.proxyAgent = null;
-    if (proxyUrl) {
-      this.proxyAgent = proxyToken 
-        ? new ProxyAgent({ uri: proxyUrl, token: proxyToken })
-        : new ProxyAgent(proxyUrl);
-      this.logger.debug(`Proxy configured: ${proxyUrl}`);
+  constructor({ fetcher, logger = console } = {}) {
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
     }
+
+    this.fetcher = fetcher;
+    this.logger = logger;
   }
 
   // === Webhook Management Methods ===
@@ -61,7 +49,7 @@ export class FigmaWebhooksSDK {
     description,
     active = true 
   }) {
-    return this.client.createWebhook({
+    return this.fetcher.createWebhook({
       eventType: 'FILE_UPDATE',
       context: 'file',
       contextId: fileKey,
@@ -91,7 +79,7 @@ export class FigmaWebhooksSDK {
     description,
     active = true 
   }) {
-    return this.client.createWebhook({
+    return this.fetcher.createWebhook({
       eventType,
       context: 'project',
       contextId: projectId,
@@ -121,7 +109,7 @@ export class FigmaWebhooksSDK {
     description,
     active = true 
   }) {
-    return this.client.createWebhook({
+    return this.fetcher.createWebhook({
       eventType,
       context: 'team',
       contextId: teamId,
@@ -139,7 +127,7 @@ export class FigmaWebhooksSDK {
    */
   async getWebhook(webhookId) {
     try {
-      return await this.client.getWebhook(webhookId);
+      return await this.fetcher.getWebhook(webhookId);
     } catch (error) {
       if (error.meta?.status === 404) {
         return null;
@@ -157,7 +145,7 @@ export class FigmaWebhooksSDK {
    * @returns {Promise<Array>} - Array of webhooks
    */
   async listWebhooks(options = {}) {
-    const response = await this.client.getWebhooks(options);
+    const response = await this.fetcher.getWebhooks(options);
     return response.webhooks || [];
   }
 
@@ -169,7 +157,7 @@ export class FigmaWebhooksSDK {
   async listAllWebhooks(planApiId) {
     const webhooks = [];
     
-    for await (const batch of this.client.paginateWebhooks(planApiId)) {
+    for await (const batch of this.fetcher.paginateWebhooks(planApiId)) {
       webhooks.push(...batch);
     }
 
@@ -183,7 +171,7 @@ export class FigmaWebhooksSDK {
    * @returns {Promise<Object>} - Updated webhook
    */
   async updateWebhook(webhookId, updates) {
-    return this.client.updateWebhook(webhookId, updates);
+    return this.fetcher.updateWebhook(webhookId, updates);
   }
 
   /**
@@ -193,7 +181,7 @@ export class FigmaWebhooksSDK {
    */
   async deleteWebhook(webhookId) {
     try {
-      await this.client.deleteWebhook(webhookId);
+      await this.fetcher.deleteWebhook(webhookId);
       return true;
     } catch (error) {
       if (error.meta?.status === 404) {
@@ -209,7 +197,7 @@ export class FigmaWebhooksSDK {
    * @returns {Promise<Object>} - Updated webhook
    */
   async pauseWebhook(webhookId) {
-    return this.client.pauseWebhook(webhookId);
+    return this.fetcher.pauseWebhook(webhookId);
   }
 
   /**
@@ -218,7 +206,7 @@ export class FigmaWebhooksSDK {
    * @returns {Promise<Object>} - Updated webhook
    */
   async activateWebhook(webhookId) {
-    return this.client.activateWebhook(webhookId);
+    return this.fetcher.activateWebhook(webhookId);
   }
 
   // === Webhook Monitoring Methods ===
@@ -229,7 +217,7 @@ export class FigmaWebhooksSDK {
    * @returns {Promise<Array>} - Recent webhook requests
    */
   async getWebhookHistory(webhookId) {
-    const response = await this.client.getWebhookRequests(webhookId);
+    const response = await this.fetcher.getWebhookRequests(webhookId);
     return response.requests || [];
   }
 
@@ -301,7 +289,7 @@ export class FigmaWebhooksSDK {
 
     for (const contextId of contextIds) {
       try {
-        const webhook = await this.client.createWebhook({
+        const webhook = await this.fetcher.createWebhook({
           ...webhookConfig,
           contextId
         });
@@ -331,7 +319,7 @@ export class FigmaWebhooksSDK {
 
     for (const webhookId of webhookIds) {
       try {
-        await this.client.deleteWebhook(webhookId);
+        await this.fetcher.deleteWebhook(webhookId);
         results.deleted.push(webhookId);
       } catch (error) {
         results.errors.push({
@@ -358,7 +346,7 @@ export class FigmaWebhooksSDK {
 
     for (const webhookId of webhookIds) {
       try {
-        const webhook = await this.client.pauseWebhook(webhookId);
+        const webhook = await this.fetcher.pauseWebhook(webhookId);
         results.paused.push(webhook);
       } catch (error) {
         results.errors.push({
@@ -414,26 +402,25 @@ export class FigmaWebhooksSDK {
    * @returns {Promise<Object>} - Test results
    */
   async testWebhookEndpoint(endpoint) {
+    const testPayload = {
+      event_type: 'PING',
+      timestamp: new Date().toISOString(),
+      webhook_id: 'test'
+    };
+
     try {
-      const fetchOptions = {
+      // Use fetcher's raw fetch capability for non-Figma endpoints
+      // If fetcher doesn't have a fetch method, we'll need to use native fetch
+      const fetchMethod = this.fetcher.fetch?.bind(this.fetcher) || globalThis.fetch;
+
+      const response = await fetchMethod(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Figma-Event': 'PING'
         },
-        body: JSON.stringify({
-          event_type: 'PING',
-          timestamp: new Date().toISOString(),
-          webhook_id: 'test'
-        })
-      };
-      
-      // Add proxy dispatcher if configured
-      if (this.proxyAgent) {
-        fetchOptions.dispatcher = this.proxyAgent;
-      }
-      
-      const response = await fetch(endpoint, fetchOptions);
+        body: JSON.stringify(testPayload)
+      });
 
       return {
         reachable: true,
@@ -457,7 +444,7 @@ export class FigmaWebhooksSDK {
    * @returns {boolean} - Whether signature is valid
    */
   verifySignature(payload, signature, passcode) {
-    return this.client.verifyWebhookSignature(payload, signature, passcode);
+    return this.fetcher.verifyWebhookSignature(payload, signature, passcode);
   }
 
   /**
@@ -465,7 +452,7 @@ export class FigmaWebhooksSDK {
    * @returns {Array<string>} - Available event types
    */
   getSupportedEventTypes() {
-    return [...this.client.eventTypes];
+    return [...this.fetcher.eventTypes];
   }
 
   /**
@@ -473,7 +460,7 @@ export class FigmaWebhooksSDK {
    * @returns {Array<string>} - Available context types
    */
   getSupportedContextTypes() {
-    return [...this.client.contextTypes];
+    return [...this.fetcher.contextTypes];
   }
 
   /**

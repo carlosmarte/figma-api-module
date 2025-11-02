@@ -14,7 +14,6 @@
  *  - Memory-efficient bulk operations
  */
 
-import FigmaCommentsClient from './client.mjs';
 import {
   ValidationError,
   CommentError,
@@ -28,17 +27,22 @@ import {
  * Core service for Figma Comments business logic
  */
 export class FigmaCommentsService {
+  /**
+   * @param {Object} options - Service configuration
+   * @param {Object} options.fetcher - FigmaApiClient instance (required)
+   * @param {Object} [options.logger=console] - Logger instance
+   * @param {boolean} [options.validateInputs=true] - Whether to validate inputs
+   */
   constructor({
-    client = null,
-    apiToken = null,
+    fetcher,
     logger = console,
     validateInputs = true
   } = {}) {
-    if (!client && !apiToken) {
-      throw new ValidationError('Either client instance or apiToken must be provided');
+    if (!fetcher) {
+      throw new Error('fetcher parameter is required. Please create and pass a FigmaApiClient instance.');
     }
 
-    this.client = client || new FigmaCommentsClient({ apiToken, logger });
+    this.fetcher = fetcher;
     this.logger = logger;
     this.validateInputs = validateInputs;
   }
@@ -58,7 +62,7 @@ export class FigmaCommentsService {
     }
 
     try {
-      const response = await this.client.request(`/v1/files/${fileKey}/comments`, {
+      const response = await this.fetcher.request(`/v1/files/${fileKey}/comments`, {
         params
       });
 
@@ -96,7 +100,7 @@ export class FigmaCommentsService {
     }
 
     try {
-      const comment = await this.client.request(`/v1/files/${fileKey}/comments`, {
+      const comment = await this.fetcher.request(`/v1/files/${fileKey}/comments`, {
         method: 'POST',
         body: payload
       });
@@ -119,7 +123,7 @@ export class FigmaCommentsService {
     this._validateCommentId(commentId);
 
     try {
-      const result = await this.client.request(
+      const result = await this.fetcher.request(
         `/v1/files/${fileKey}/comments/${commentId}`,
         { method: 'DELETE' }
       );
@@ -145,7 +149,7 @@ export class FigmaCommentsService {
     this._validateCommentId(commentId);
 
     try {
-      const response = await this.client.request(
+      const response = await this.fetcher.request(
         `/v1/files/${fileKey}/comments/${commentId}/reactions`
       );
 
@@ -178,7 +182,7 @@ export class FigmaCommentsService {
     const payload = { emoji };
 
     try {
-      const reaction = await this.client.request(
+      const reaction = await this.fetcher.request(
         `/v1/files/${fileKey}/comments/${commentId}/reactions`,
         {
           method: 'POST',
@@ -213,7 +217,7 @@ export class FigmaCommentsService {
     this._validateReactionEmoji(emoji);
 
     try {
-      const result = await this.client.request(
+      const result = await this.fetcher.request(
         `/v1/files/${fileKey}/comments/${commentId}/reactions`,
         {
           method: 'DELETE',
@@ -707,7 +711,7 @@ export class FigmaCommentsService {
   async _getCurrentUserId() {
     try {
       // Use the /v1/me endpoint to get current user info
-      const userInfo = await this.client.request('/v1/me');
+      const userInfo = await this.fetcher.request('/v1/me');
       return userInfo.id;
     } catch (error) {
       this.logger.warn('Could not get current user ID:', error.message);

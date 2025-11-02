@@ -7,6 +7,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaWebhooksSDK } from './sdk.mjs';
 
 const program = new Command();
@@ -32,9 +33,15 @@ function getSDK(options) {
     process.exit(1);
   }
 
-  return new FigmaWebhooksSDK({
+  // Create fetcher first
+  const fetcher = new FigmaApiClient({
     apiToken: token,
-    baseUrl: options.baseUrl,
+    baseUrl: options.baseUrl || 'https://api.figma.com'
+  });
+
+  // Pass fetcher to SDK
+  return new FigmaWebhooksSDK({
+    fetcher,
     logger: options.verbose ? console : { debug: () => {}, log: () => {}, error: console.error }
   });
 }
@@ -156,7 +163,7 @@ program
     const globalOpts = command.optsWithGlobals();
 
     try {
-      const webhook = await sdk.client.createWebhook({
+      const webhook = await sdk.fetcher.createWebhook({
         eventType: options.event,
         context: options.context,
         contextId: options.contextId,

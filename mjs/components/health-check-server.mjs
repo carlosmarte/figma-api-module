@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import { FigmaComponentsSDK } from './index.mjs';
 
 const fastify = Fastify({
@@ -63,7 +64,8 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaComponentsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaComponentsSDK({ fetcher });
     const components = await sdk.getTeamComponents(testTeamId);
 
     return {
@@ -92,7 +94,8 @@ fastify.get('/components/team/:teamId', async (request, reply) => {
 
   try {
     const { teamId } = request.params;
-    const sdk = new FigmaComponentsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaComponentsSDK({ fetcher });
     const components = await sdk.getTeamComponents(teamId);
 
     return {
@@ -120,7 +123,8 @@ fastify.get('/components/file/:fileKey', async (request, reply) => {
 
   try {
     const { fileKey } = request.params;
-    const sdk = new FigmaComponentsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaComponentsSDK({ fetcher });
     const components = await sdk.getFileComponents(fileKey);
 
     return {
@@ -148,7 +152,8 @@ fastify.get('/library/:teamId', async (request, reply) => {
 
   try {
     const { teamId } = request.params;
-    const sdk = new FigmaComponentsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaComponentsSDK({ fetcher });
     const library = await sdk.getTeamLibrary(teamId);
 
     return {

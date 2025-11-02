@@ -4,6 +4,7 @@
  */
 
 import Fastify from 'fastify';
+import { FigmaApiClient } from '@figma-api/fetch';
 import FigmaProjectsSDK from './index.mjs';
 
 const fastify = Fastify({
@@ -64,7 +65,8 @@ fastify.get('/test', async (request, reply) => {
       };
     }
 
-    const sdk = new FigmaProjectsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaProjectsSDK({ fetcher });
     const projects = await sdk.getTeamProjects(testTeamId);
 
     return {
@@ -93,7 +95,8 @@ fastify.get('/projects/team/:teamId', async (request, reply) => {
 
   try {
     const { teamId } = request.params;
-    const sdk = new FigmaProjectsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaProjectsSDK({ fetcher });
     const projects = await sdk.getTeamProjects(teamId);
 
     return {
@@ -121,7 +124,8 @@ fastify.get('/projects/:projectId/files', async (request, reply) => {
 
   try {
     const { projectId } = request.params;
-    const sdk = new FigmaProjectsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaProjectsSDK({ fetcher });
     const files = await sdk.getProjectFiles(projectId);
 
     return {
@@ -149,7 +153,8 @@ fastify.get('/projects/team/:teamId/tree', async (request, reply) => {
 
   try {
     const { teamId } = request.params;
-    const sdk = new FigmaProjectsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaProjectsSDK({ fetcher });
     const tree = await sdk.getProjectTree(teamId);
 
     return {
@@ -177,7 +182,8 @@ fastify.get('/projects/team/:teamId/recent', async (request, reply) => {
 
   try {
     const { teamId } = request.params;
-    const sdk = new FigmaProjectsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaProjectsSDK({ fetcher });
     const recent = await sdk.getRecentFiles(teamId);
 
     return {
@@ -214,7 +220,8 @@ fastify.get('/projects/team/:teamId/search', async (request, reply) => {
       });
     }
 
-    const sdk = new FigmaProjectsSDK({ token: FIGMA_TOKEN });
+    const fetcher = new FigmaApiClient({ apiToken: FIGMA_TOKEN });
+    const sdk = new FigmaProjectsSDK({ fetcher });
     const results = await sdk.searchProjects(teamId, query);
 
     return {
